@@ -39,7 +39,7 @@ Delete its folder, remove its entry in `src/modules/index.ts`, and add a migrati
 
 ## Platform services
 
-- `ModuleContext` provides `config`, raw `env` for module-specific variables, `logger`, `db`, `events`, `email` and the `requireUser` authentication hook.
+- `ModuleContext` provides `config`, raw `env` for module-specific variables, `logger`, `db`, `events`, `email` and the `requireUser` authentication hook. Modules attach `requireUser` with `onRequest` so authentication runs before body parsing.
 - Modules are created through `ModuleFactory`; they may provide `registerRoutes` and background `jobs`.
 - Integration events carry `{ type, occurredAt, payload }`. Subscribers validate their own payload with zod; publishers and subscribers never share payload types. In-process handlers run in order; failures are logged without rejecting publication because the publisher's work is already committed.
 - `USER_PROFILE_CREATED` is `identity.user_profile_created`, with payload `{ userId: string, email: string }`.

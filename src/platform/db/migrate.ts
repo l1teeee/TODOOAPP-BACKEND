@@ -1,10 +1,12 @@
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { loadConfig } from "../config/env.js";
+import { createLogger } from "../logging/create-logger.js";
 import { createDatabase } from "./database.js";
 
 try {
   const config = loadConfig(process.env);
-  const database = createDatabase(config.database);
+  const logger = createLogger(config);
+  const database = createDatabase(config.database, logger);
   try {
     await migrate(database.db, { migrationsFolder: "drizzle" });
   } finally {

@@ -15,7 +15,7 @@ export function createPlatform(options: {
   logger: Logger;
 }): { database: Database; context: ModuleContext } {
   const { config, env, logger } = options;
-  const database = createDatabase(config.database);
+  const database = createDatabase(config.database, logger);
   const events = createInProcessEventBus(logger);
   const email = createEmailSender(config, logger);
   const verifier = createSupabaseJwtVerifier(config.supabase);

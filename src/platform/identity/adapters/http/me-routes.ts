@@ -1,4 +1,4 @@
-import type { preHandlerAsyncHookHandler } from "fastify";
+import type { onRequestAsyncHookHandler } from "fastify";
 import { z } from "zod";
 import type { HttpServer } from "../../../http/http-server.js";
 import { getProfile } from "../../application/get-profile.js";
@@ -27,12 +27,12 @@ const patchSchema = z
 
 export function registerMeRoutes(
   server: HttpServer,
-  deps: { profiles: ProfileRepository; requireUser: preHandlerAsyncHookHandler },
+  deps: { profiles: ProfileRepository; requireUser: onRequestAsyncHookHandler },
 ): void {
   server.get(
     "/me",
     {
-      preHandler: deps.requireUser,
+      onRequest: deps.requireUser,
       schema: { security: [{ bearerAuth: [] }], response: { 200: profileSchema } },
     },
     (request) => getProfile(deps.profiles, currentUser(request).id),
@@ -41,7 +41,7 @@ export function registerMeRoutes(
   server.patch(
     "/me",
     {
-      preHandler: deps.requireUser,
+      onRequest: deps.requireUser,
       schema: {
         security: [{ bearerAuth: [] }],
         body: patchSchema,

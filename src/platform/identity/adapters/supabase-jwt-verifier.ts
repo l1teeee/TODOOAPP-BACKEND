@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { AppConfig } from "../../config/env.js";
-import { AppError } from "../../errors/app-error.js";
+import { invalidToken } from "../application/identity-errors.js";
 import type { AccessTokenVerifier } from "../application/ports.js";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,7 +21,7 @@ export function createSupabaseJwtVerifier(config: AppConfig["supabase"]): Access
           typeof payload.email !== "string" ||
           !payload.email
         ) {
-          throw new Error("Invalid identity claims");
+          throw invalidToken();
         }
         const metadata: unknown = payload.user_metadata;
         const fullName =
@@ -33,7 +33,7 @@ export function createSupabaseJwtVerifier(config: AppConfig["supabase"]): Access
             : null;
         return { id: payload.sub, email: payload.email, fullName };
       } catch {
-        throw new AppError("unauthorized", "INVALID_TOKEN", "Invalid or expired token");
+        throw invalidToken();
       }
     },
   };

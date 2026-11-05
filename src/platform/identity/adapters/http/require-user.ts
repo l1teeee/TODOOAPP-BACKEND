@@ -1,9 +1,10 @@
-import type { FastifyBaseLogger, FastifyRequest, preHandlerAsyncHookHandler } from "fastify";
-import { AppError } from "../../../errors/app-error.js";
+import type { FastifyBaseLogger, FastifyRequest, onRequestAsyncHookHandler } from "fastify";
 import { USER_PROFILE_CREATED } from "../../../events/event-bus.js";
 import type { EventBus } from "../../../events/event-bus.js";
+import { missingToken } from "../../application/identity-errors.js";
 import type { AccessTokenVerifier, ProfileRepository } from "../../application/ports.js";
 import type { AuthenticatedUser } from "../../domain/authenticated-user.js";
+import { createRecentlyEnsuredUsers } from "./recently-ensured-users.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -19,18 +20,20 @@ export function createRequireUser(deps: {
   profiles: ProfileRepository;
   events: EventBus;
   logger: FastifyBaseLogger;
-}): preHandlerAsyncHookHandler {
-  const ensuredUsers = new Map<string, number>();
+}): onRequestAsyncHookHandler {
+  const ensuredUsers = createRecentlyEnsuredUsers({
+    ttlMs: ENSURED_TTL_MS,
+    maxEntries: MAX_ENSURED_USERS,
+  });
 
   return async (request) => {
     const match = /^Bearer ([^\s]+)$/i.exec(request.headers.authorization ?? "");
     const token = match?.[1];
     if (!token) {
-      throw new AppError("unauthorized", "MISSING_TOKEN", "Bearer token required");
+      throw missingToken();
     }
     const user = await deps.verifier.verify(token);
-    const ensuredAt = ensuredUsers.get(user.id);
-    if (ensuredAt === undefined || Date.now() - ensuredAt >= ENSURED_TTL_MS) {
+    if (!ensuredUsers.has(user.id)) {
       const { created } = await deps.profiles.ensure(user);
       if (created) {
         await deps.events.publish({
@@ -40,14 +43,7 @@ export function createRequireUser(deps: {
         });
         deps.logger.debug({ userId: user.id }, "User profile created");
       }
-      ensuredUsers.delete(user.id);
-      if (ensuredUsers.size >= MAX_ENSURED_USERS) {
-        const oldest = ensuredUsers.keys().next().value;
-        if (oldest !== undefined) {
-          ensuredUsers.delete(oldest);
-        }
-      }
-      ensuredUsers.set(user.id, Date.now());
+      ensuredUsers.remember(user.id);
     }
     request.user = user;
   };
@@ -55,7 +51,7 @@ export function createRequireUser(deps: {
 
 export function currentUser(request: FastifyRequest): AuthenticatedUser {
   if (!request.user) {
-    throw new AppError("unauthorized", "MISSING_TOKEN", "Bearer token required");
+    throw missingToken();
   }
   return request.user;
 }

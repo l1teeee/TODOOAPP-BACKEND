@@ -21,6 +21,9 @@ export function createEmailSender(config: AppConfig, logger: FastifyBaseLogger):
       return createResendEmailSender({ ...email, apiKey: email.resendApiKey });
     }
     case "log":
+      if (config.nodeEnv === "production") {
+        throw new Error("Log email provider is unavailable in production");
+      }
       return createLogEmailSender(logger);
   }
 }

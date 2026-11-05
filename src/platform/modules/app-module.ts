@@ -1,5 +1,5 @@
 import type { AppConfig } from "../config/env.js";
-import type { FastifyBaseLogger, preHandlerAsyncHookHandler } from "fastify";
+import type { FastifyBaseLogger, onRequestAsyncHookHandler } from "fastify";
 import type { DbExecutor } from "../db/database.js";
 import type { EmailSender } from "../email/email-sender.js";
 import type { EventBus } from "../events/event-bus.js";
@@ -13,8 +13,9 @@ export interface ModuleContext {
   readonly db: DbExecutor;
   readonly events: EventBus;
   readonly email: EmailSender;
-  readonly requireUser: preHandlerAsyncHookHandler;
+  readonly requireUser: onRequestAsyncHookHandler;
 }
+
 export interface AppModule {
   readonly name: string;
   registerRoutes?(server: HttpServer): Promise<void>;

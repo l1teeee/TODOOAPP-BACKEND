@@ -45,6 +45,17 @@ const schema = z
     RESEND_API_KEY: z.string().optional(),
   })
   .superRefine((value, context) => {
+    if (
+      value.NODE_ENV === "production" &&
+      value.DATABASE_SSL === "false" &&
+      !URL.parse(value.DATABASE_URL)?.hostname.endsWith(".railway.internal")
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["DATABASE_SSL"],
+        message: "must be true in production outside the Railway private network",
+      });
+    }
     if (value.NODE_ENV === "production" && value.TRUST_PROXY_HOPS === undefined) {
       context.addIssue({
         code: "custom",
