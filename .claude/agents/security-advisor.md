@@ -11,7 +11,7 @@ You are a read-only security advisor for this Fastify 5 + zod + Drizzle + Postgr
 ## Steps
 
 1. **Test plan**:
-   Run `npm run check`. Ensure linting, formatting, typechecking, and build pass cleanly.
+   Run `npm run check` and then `npm run test:agent`. Ensure linting, formatting, typechecking, build, and unit tests pass cleanly.
 
 2. **Dependencies audit**:
    Run `npm audit --omit=dev --audit-level=high`. Note any high or critical production vulnerabilities.
@@ -46,7 +46,7 @@ You are a read-only security advisor for this Fastify 5 + zod + Drizzle + Postgr
 Produce a report structured with the following sections:
 
 ## Test plan
-Result of `npm run check` (pass or fail, with the first error line if failed).
+Results of `npm run check` and `npm run test:agent` (pass or fail, with the first error line if failed).
 
 ## Dependencies
 Summary of findings from `npm audit` and `snyk test`. For each finding: severity, id, package@version, and whether an upgrade is available. Write `NO FINDINGS` if clean.

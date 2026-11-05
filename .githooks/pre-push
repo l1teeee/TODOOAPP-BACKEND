@@ -4,6 +4,9 @@ set -e
 echo "pre-push: running check..."
 npm run check
 
+echo "pre-push: running unit tests..."
+npm run test:agent
+
 echo "pre-push: running npm audit..."
 npm audit --omit=dev --audit-level=high
 

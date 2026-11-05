@@ -40,6 +40,7 @@ Satellites own their association tables, with foreign keys to `activitiesTable` 
 
 - `npm run dev`
 - `npm run check` (lint, typecheck, build)
+- `npm test` (Jest unit tests; `npm run test:agent` runs them in band)
 - `npm run openapi:export` (writes openapi.json, the contract the frontend repo generates its types from)
 
 # Security and quality
@@ -60,6 +61,6 @@ Satellites own their association tables, with foreign keys to `activitiesTable` 
 
 # Pre-push gate and security advisor
 
-- The hook in `.githooks/pre-push` runs `check`, `npm audit` and Snyk (`SKIP_SNYK=1` only for an explicit, temporary opt-out).
+- The hook in `.githooks/pre-push` runs `check`, the unit tests, `npm audit` and Snyk (`SKIP_SNYK=1` only for an explicit, temporary opt-out).
 - `npm install` sets `core.hooksPath` through the `prepare` script.
 - Run the `security-advisor` agent before asking for a merge or a push.

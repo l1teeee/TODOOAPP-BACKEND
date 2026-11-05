@@ -108,23 +108,29 @@ src/
 
 ## Scripts
 
-| Script                   | Description                                                           |
-| ------------------------ | --------------------------------------------------------------------- |
-| `npm run dev`            | Starts the API server in watch mode using `tsx` and `.env`.           |
-| `npm run dev:worker`     | Starts the background worker in watch mode using `tsx` and `.env`.    |
-| `npm run build`          | Compiles TypeScript source files into `dist/`.                        |
-| `npm run start`          | Runs the compiled production API server from `dist/main.js`.          |
-| `npm run start:worker`   | Runs the compiled production worker process from `dist/worker.js`.    |
-| `npm run db:generate`    | Generates SQL migration files from Drizzle schema definitions.        |
-| `npm run db:migrate`     | Runs pending database migrations using the compiled migration runner. |
-| `npm run db:migrate:dev` | Runs pending database migrations directly in TypeScript using `.env`. |
-| `npm run lint`           | Lints codebase using ESLint.                                          |
-| `npm run format`         | Formats all files with Prettier.                                      |
-| `npm run format:check`   | Checks code formatting against Prettier rules.                        |
-| `npm run typecheck`      | Validates TypeScript types without emitting files.                    |
-| `npm run check`          | Runs lint, format check, typecheck, and build in sequence.            |
-| `npm run openapi:export` | Generates the OpenAPI 3 specification file (`openapi.json`).          |
-| `npm run prepare`        | Configures git hooks directory (`core.hooksPath=.githooks`).          |
+| Script                   | Description                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `npm run dev`            | Starts the API server in watch mode using `tsx` and `.env`.                      |
+| `npm run dev:worker`     | Starts the background worker in watch mode using `tsx` and `.env`.               |
+| `npm run build`          | Compiles TypeScript into `dist/`, excluding tests through `tsconfig.build.json`. |
+| `npm test`               | Runs the Jest unit tests.                                                        |
+| `npm run test:agent`     | Runs the Jest unit tests in band.                                                |
+| `npm run start`          | Runs the compiled production API server from `dist/main.js`.                     |
+| `npm run start:worker`   | Runs the compiled production worker process from `dist/worker.js`.               |
+| `npm run db:generate`    | Generates SQL migration files from Drizzle schema definitions.                   |
+| `npm run db:migrate`     | Runs pending database migrations using the compiled migration runner.            |
+| `npm run db:migrate:dev` | Runs pending database migrations directly in TypeScript using `.env`.            |
+| `npm run lint`           | Lints codebase using ESLint.                                                     |
+| `npm run format`         | Formats all files with Prettier.                                                 |
+| `npm run format:check`   | Checks code formatting against Prettier rules.                                   |
+| `npm run typecheck`      | Validates TypeScript types without emitting files.                               |
+| `npm run check`          | Runs lint, format check, typecheck, and build in sequence.                       |
+| `npm run openapi:export` | Generates the OpenAPI 3 specification file (`openapi.json`).                     |
+| `npm run prepare`        | Configures git hooks directory (`core.hooksPath=.githooks`).                     |
+
+## Testing
+
+Jest 30 uses the ts-jest ESM preset. Tests live in `src/**/__tests__/*.test.ts` next to the code and use in-memory fakes and a mocked fetch, so no database, network or `.env` is needed. Run them with `npm test`; the pre-push hook runs `npm run test:agent`.
 
 ## Environment Variables
 
