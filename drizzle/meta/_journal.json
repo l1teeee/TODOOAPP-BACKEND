@@ -15,6 +15,13 @@
       "when": 1793903761206,
       "tag": "0001_fixed_omega_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793904493425,
+      "tag": "0002_soft_sasquatch",
+      "breakpoints": true
     }
   ]
 }

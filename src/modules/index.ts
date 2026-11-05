@@ -4,7 +4,9 @@ import { isAiAssistantEnabled } from "./ai-assistant/config.js";
 import { createAiAssistantModule } from "./ai-assistant/module.js";
 import { createAuthGatewayModule } from "./auth-gateway/module.js";
 import { createListsModule } from "./lists/module.js";
+import { createNotificationsModule } from "./notifications/module.js";
 import { createSubtasksModule } from "./subtasks/module.js";
+import { createSummaryModule } from "./summary/module.js";
 import { createTagsModule } from "./tags/module.js";
 
 export function buildModules(context: ModuleContext): AppModule[] {
@@ -17,6 +19,8 @@ export function buildModules(context: ModuleContext): AppModule[] {
     createListsModule(context, activities),
     createTagsModule(context, activities),
     createSubtasksModule(context, activities),
+    createNotificationsModule(context),
+    createSummaryModule(context),
   ];
   if (isAiAssistantEnabled(context.env)) {
     modules.push(createAiAssistantModule(context));
