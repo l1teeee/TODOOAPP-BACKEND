@@ -43,6 +43,9 @@ export const emailOutbox = pgTable(
     index("email_outbox_due_idx")
       .on(table.nextAttemptAt)
       .where(sql`${table.status} = 'pending'`),
+    index("email_outbox_sending_idx")
+      .on(table.lockedAt)
+      .where(sql`${table.status} = 'sending'`),
   ],
 );
 

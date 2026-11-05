@@ -26,7 +26,11 @@ export interface DueReminder {
 
 export interface NotificationEmailTemplates {
   subtaskCreated(input: SubtasksCreated & { to: string; displayName: string | null }): EmailMessage;
-  reminderDue: (input: DueReminder) => EmailMessage;
+  reminderDue(input: DueReminder): EmailMessage;
+}
+
+export interface OutboxErrorLogger {
+  error(fields: { event: string; outboxId: string; errorCode: string }): void;
 }
 
 export interface OutboxRepository {
@@ -35,6 +39,7 @@ export interface OutboxRepository {
   claim(batchSize: number): Promise<EmailOutboxMessage[]>;
   markSent(message: EmailOutboxMessage): Promise<void>;
   markFailed(message: EmailOutboxMessage, errorCode: string): Promise<void>;
+  cleanup(): Promise<void>;
 }
 
 export interface ReminderRepository {

@@ -8,8 +8,10 @@ import { emailOutbox, reminderNotifications } from "./schema.js";
 export function createDrizzleReminderRepository(db: DbExecutor): ReminderRepository {
   return {
     enqueueDue(leadMinutes, render) {
+      // The render callback keeps reminder claims and rendered outbox inserts atomic.
       return db.transaction(async (tx) => {
-        const remindAt = sql<Date>`((${activitiesTable.scheduledDate} + ${activitiesTable.startTime}) at time zone ${profiles.timezone})`;
+        const remindAt = sql<Date>`case when ${profiles.timezone} in (select name from pg_timezone_names)
+          then ((${activitiesTable.scheduledDate} + ${activitiesTable.startTime}) at time zone ${profiles.timezone}) end`;
         const inserted = tx.$with("inserted_reminders").as(
           tx
             .insert(reminderNotifications)

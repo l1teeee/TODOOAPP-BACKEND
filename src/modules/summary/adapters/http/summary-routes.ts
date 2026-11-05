@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { HttpServer } from "../../../../platform/http/http-server.js";
 import { currentUser } from "../../../../platform/identity/adapters/http/require-user.js";
 import type { ModuleContext } from "../../../../platform/modules/app-module.js";
+import { getSummary } from "../../application/get-summary.js";
 import type { SummaryRepository } from "../../application/ports.js";
 
 const dateSchema = z.iso.date().refine((value) => {
@@ -31,6 +32,6 @@ export function registerSummaryRoutes(
         response: { 200: summarySchema },
       },
     },
-    (request) => deps.repository.get(currentUser(request).id, request.query.today),
+    (request) => getSummary(deps.repository, currentUser(request).id, request.query.today),
   );
 }

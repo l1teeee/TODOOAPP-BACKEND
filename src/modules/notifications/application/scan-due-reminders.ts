@@ -5,5 +5,7 @@ export function scanDueReminders(deps: {
   templates: NotificationEmailTemplates;
   leadMinutes: number;
 }): Promise<number> {
-  return deps.reminders.enqueueDue(deps.leadMinutes, deps.templates.reminderDue);
+  return deps.reminders.enqueueDue(deps.leadMinutes, (reminder) =>
+    deps.templates.reminderDue(reminder),
+  );
 }

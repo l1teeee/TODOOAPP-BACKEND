@@ -12,8 +12,8 @@ import { loadNotificationsConfig } from "./config.js";
 const subtasksCreatedSchema = z.object({
   userId: z.uuid(),
   activityId: z.uuid(),
-  activityTitle: z.string(),
-  subtaskTitles: z.array(z.string()).min(1).max(10),
+  activityTitle: z.string().max(120),
+  subtaskTitles: z.array(z.string().max(120)).min(1).max(10),
 });
 
 export function createNotificationsModule(context: ModuleContext): AppModule {
@@ -25,8 +25,12 @@ export function createNotificationsModule(context: ModuleContext): AppModule {
     try {
       const payload = subtasksCreatedSchema.parse(event.payload);
       await enqueueSubtaskEmail({ outbox, templates }, payload);
-    } catch {
-      // Database errors can include query parameters containing email content.
+    } catch (error) {
+      // Log only the error name because database errors can contain email content.
+      context.logger.error({
+        event: "notifications.subtask_enqueue_failed",
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
       throw new AppError(
         "unavailable",
         "SUBTASK_EMAIL_ENQUEUE_FAILED",
@@ -48,7 +52,12 @@ export function createNotificationsModule(context: ModuleContext): AppModule {
               leadMinutes: config.REMINDER_LEAD_MINUTES,
             });
             context.logger.info({ enqueued }, "Reminder scan completed");
-          } catch {
+          } catch (error) {
+            // Log only the error name because scan errors can contain email content.
+            context.logger.error({
+              event: "notifications.reminder_scan_failed",
+              errorName: error instanceof Error ? error.name : "UnknownError",
+            });
             throw new AppError("unavailable", "REMINDER_SCAN_FAILED", "Reminder scan failed");
           }
         },
@@ -62,10 +71,36 @@ export function createNotificationsModule(context: ModuleContext): AppModule {
               outbox,
               email: context.email,
               batchSize: config.OUTBOX_BATCH_SIZE,
+              logger: context.logger,
             });
             context.logger.info(counts, "Email outbox drain completed");
-          } catch {
+          } catch (error) {
+            // Log only the error name because drain errors can contain email content.
+            context.logger.error({
+              event: "notifications.outbox_drain_failed",
+              errorName: error instanceof Error ? error.name : "UnknownError",
+            });
             throw new AppError("unavailable", "OUTBOX_DRAIN_FAILED", "Email outbox drain failed");
+          }
+        },
+      },
+      {
+        name: "notifications.outbox-cleanup",
+        intervalMs: 3_600_000,
+        async run() {
+          try {
+            await outbox.cleanup();
+          } catch (error) {
+            // Log only the error name because database errors can contain email content.
+            context.logger.error({
+              event: "notifications.outbox_cleanup_failed",
+              errorName: error instanceof Error ? error.name : "UnknownError",
+            });
+            throw new AppError(
+              "unavailable",
+              "OUTBOX_CLEANUP_FAILED",
+              "Email outbox cleanup failed",
+            );
           }
         },
       },
