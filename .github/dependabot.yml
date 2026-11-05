@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    ignore:
+      - dependency-name: "@types/node"
+        versions: [">=25"]
+    groups:
+      fastify:
+        patterns:
+          - "fastify"
+          - "@fastify/*"
+          - "fastify-type-provider-zod"
+      drizzle:
+        patterns:
+          - "drizzle-orm"
+          - "drizzle-kit"
+      eslint:
+        patterns:
+          - "eslint"
+          - "@eslint/js"
+          - "typescript-eslint"
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
