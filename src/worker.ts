@@ -12,8 +12,6 @@ const jobs = modules.flatMap((module) => module.jobs ?? []);
 const runner = runJobs(jobs, logger);
 logger.info({ jobs: jobs.map((job) => job.name) }, "Worker started");
 
-// Keep an empty worker alive while no feature modules declare jobs.
-const keepAlive = setInterval(() => undefined, 60_000);
 let stopping = false;
 
 async function shutdown(signal: string): Promise<void> {
@@ -23,7 +21,6 @@ async function shutdown(signal: string): Promise<void> {
   stopping = true;
   logger.info(`Received ${signal}`);
   setTimeout(() => process.exit(1), 10_000).unref();
-  clearInterval(keepAlive);
   try {
     await runner.stop();
     await database.close();
