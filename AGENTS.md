@@ -63,4 +63,3 @@ Satellites own their association tables, with foreign keys to `activitiesTable` 
 - The hook in `.githooks/pre-push` runs `check`, `npm audit` and Snyk (`SKIP_SNYK=1` only for an explicit, temporary opt-out).
 - `npm install` sets `core.hooksPath` through the `prepare` script.
 - Run the `security-advisor` agent before asking for a merge or a push.
-

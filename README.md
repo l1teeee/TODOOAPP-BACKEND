@@ -49,7 +49,7 @@ src/
   1. Delete its folder under `src/modules/<name>/`.
   2. Remove its initialization from `src/modules/index.ts`.
   3. Generate and apply a migration to drop its tables (`npm run db:generate && npm run db:migrate:dev`).
-  No other module or platform code needs modification.
+     No other module or platform code needs modification.
 
 ## Stack
 
@@ -72,26 +72,33 @@ src/
 ### Local Setup
 
 1. Clone the repository and install dependencies:
+
    ```bash
    npm install
    ```
-   *Note: `npm install` automatically triggers the `prepare` script to configure git hooks in `.githooks`.*
+
+   _Note: `npm install` automatically triggers the `prepare` script to configure git hooks in `.githooks`._
 
 2. Configure environment variables:
+
    ```bash
    cp .env.example .env
    ```
+
    Edit `.env` to supply your database URL and Supabase credentials.
 
 3. Run database migrations:
+
    ```bash
    npm run db:migrate:dev
    ```
 
 4. Start the API development server:
+
    ```bash
    npm run dev
    ```
+
    The API will listen at `http://localhost:4000`. Check liveness at `/health` and database readiness at `/health/ready`.
 
 5. Start the background worker process in a separate terminal:
@@ -101,53 +108,53 @@ src/
 
 ## Scripts
 
-| Script | Description |
-| --- | --- |
-| `npm run dev` | Starts the API server in watch mode using `tsx` and `.env`. |
-| `npm run dev:worker` | Starts the background worker in watch mode using `tsx` and `.env`. |
-| `npm run build` | Compiles TypeScript source files into `dist/`. |
-| `npm run start` | Runs the compiled production API server from `dist/main.js`. |
-| `npm run start:worker` | Runs the compiled production worker process from `dist/worker.js`. |
-| `npm run db:generate` | Generates SQL migration files from Drizzle schema definitions. |
-| `npm run db:migrate` | Runs pending database migrations using the compiled migration runner. |
+| Script                   | Description                                                           |
+| ------------------------ | --------------------------------------------------------------------- |
+| `npm run dev`            | Starts the API server in watch mode using `tsx` and `.env`.           |
+| `npm run dev:worker`     | Starts the background worker in watch mode using `tsx` and `.env`.    |
+| `npm run build`          | Compiles TypeScript source files into `dist/`.                        |
+| `npm run start`          | Runs the compiled production API server from `dist/main.js`.          |
+| `npm run start:worker`   | Runs the compiled production worker process from `dist/worker.js`.    |
+| `npm run db:generate`    | Generates SQL migration files from Drizzle schema definitions.        |
+| `npm run db:migrate`     | Runs pending database migrations using the compiled migration runner. |
 | `npm run db:migrate:dev` | Runs pending database migrations directly in TypeScript using `.env`. |
-| `npm run lint` | Lints codebase using ESLint. |
-| `npm run format` | Formats all files with Prettier. |
-| `npm run format:check` | Checks code formatting against Prettier rules. |
-| `npm run typecheck` | Validates TypeScript types without emitting files. |
-| `npm run check` | Runs lint, format check, typecheck, and build in sequence. |
-| `npm run openapi:export` | Generates the OpenAPI 3 specification file (`openapi.json`). |
-| `npm run prepare` | Configures git hooks directory (`core.hooksPath=.githooks`). |
+| `npm run lint`           | Lints codebase using ESLint.                                          |
+| `npm run format`         | Formats all files with Prettier.                                      |
+| `npm run format:check`   | Checks code formatting against Prettier rules.                        |
+| `npm run typecheck`      | Validates TypeScript types without emitting files.                    |
+| `npm run check`          | Runs lint, format check, typecheck, and build in sequence.            |
+| `npm run openapi:export` | Generates the OpenAPI 3 specification file (`openapi.json`).          |
+| `npm run prepare`        | Configures git hooks directory (`core.hooksPath=.githooks`).          |
 
 ## Environment Variables
 
-| Name | Required | Default | Description |
-| --- | --- | --- | --- |
-| `NODE_ENV` | Yes | None | Runtime environment (`development`, `test`, `production`). |
-| `HOST` | No | `0.0.0.0` | IP address for the HTTP server to bind to. |
-| `PORT` | No | `4000` | Port number for the HTTP server to listen on. |
-| `LOG_LEVEL` | No | `info` | Minimum log level (`fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`). |
-| `CORS_ORIGINS` | Yes | None | Comma-separated allowed browser origins (no paths or trailing slashes). |
-| `TRUST_PROXY_HOPS` | In production | `0` | Number of trusted reverse proxy hops (0-5); set to `1` on Railway. |
-| `RATE_LIMIT_MAX` | No | `300` | Maximum requests allowed per rate limit window per client. |
-| `RATE_LIMIT_WINDOW_MS` | No | `60000` | Rate limit window duration in milliseconds. |
-| `DATABASE_URL` | Yes | None | PostgreSQL connection URI (`postgres://` or `postgresql://`). |
-| `DATABASE_POOL_MAX` | No | `10` | Maximum database connection pool size per process (1-50). |
-| `DATABASE_SSL` | No | `false` | Enables TLS for PostgreSQL connection; required in production outside Railway. |
-| `SUPABASE_URL` | Yes | None | Supabase project HTTPS URL without trailing slash; used for JWKS token verification. |
-| `SUPABASE_SECRET_KEY` | For auth-gateway | None | Supabase service role secret key; server-only, never expose to client. |
-| `TURNSTILE_SECRET_KEY` | For auth-gateway | None | Cloudflare Turnstile secret key for server-side captcha verification. |
-| `EMAIL_PROVIDER` | No | `log` | Email delivery provider (`brevo`, `resend`, or `log`; `log` forbidden in production). |
-| `EMAIL_FROM` | Yes | None | Sender email address for outbound emails. |
-| `EMAIL_FROM_NAME` | No | `TODO App` | Display name for outbound sender. |
-| `BREVO_API_KEY` | For brevo | None | Brevo API key when `EMAIL_PROVIDER=brevo`. |
-| `RESEND_API_KEY` | For resend | None | Resend API key when `EMAIL_PROVIDER=resend`. |
-| `APP_URL` | For notifications | None | Public origin of the frontend web application for email action links. |
-| `REMINDER_LEAD_MINUTES` | No | `15` | Minutes prior to activity scheduled start time to enqueue email reminder (0-1440). |
-| `OUTBOX_BATCH_SIZE` | No | `20` | Maximum emails claimed per worker outbox drain batch (1-100). |
-| `DEEPINFRA_API_KEY` | For ai-assistant | None | DeepInfra API key; setting this variable enables the AI assistant module. |
-| `DEEPINFRA_MODEL` | No | `deepseek-ai/DeepSeek-V4-Flash-0731` | Model identifier used for AI completions. |
-| `AI_TIMEOUT_MS` | No | `20000` | Timeout in milliseconds for DeepInfra API requests (1000-60000). |
+| Name                    | Required          | Default                              | Description                                                                           |
+| ----------------------- | ----------------- | ------------------------------------ | ------------------------------------------------------------------------------------- |
+| `NODE_ENV`              | Yes               | None                                 | Runtime environment (`development`, `test`, `production`).                            |
+| `HOST`                  | No                | `0.0.0.0`                            | IP address for the HTTP server to bind to.                                            |
+| `PORT`                  | No                | `4000`                               | Port number for the HTTP server to listen on.                                         |
+| `LOG_LEVEL`             | No                | `info`                               | Minimum log level (`fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`).     |
+| `CORS_ORIGINS`          | Yes               | None                                 | Comma-separated allowed browser origins (no paths or trailing slashes).               |
+| `TRUST_PROXY_HOPS`      | In production     | `0`                                  | Number of trusted reverse proxy hops (0-5); set to `1` on Railway.                    |
+| `RATE_LIMIT_MAX`        | No                | `300`                                | Maximum requests allowed per rate limit window per client.                            |
+| `RATE_LIMIT_WINDOW_MS`  | No                | `60000`                              | Rate limit window duration in milliseconds.                                           |
+| `DATABASE_URL`          | Yes               | None                                 | PostgreSQL connection URI (`postgres://` or `postgresql://`).                         |
+| `DATABASE_POOL_MAX`     | No                | `10`                                 | Maximum database connection pool size per process (1-50).                             |
+| `DATABASE_SSL`          | No                | `false`                              | Enables TLS for PostgreSQL connection; required in production outside Railway.        |
+| `SUPABASE_URL`          | Yes               | None                                 | Supabase project HTTPS URL without trailing slash; used for JWKS token verification.  |
+| `SUPABASE_SECRET_KEY`   | For auth-gateway  | None                                 | Supabase service role secret key; server-only, never expose to client.                |
+| `TURNSTILE_SECRET_KEY`  | For auth-gateway  | None                                 | Cloudflare Turnstile secret key for server-side captcha verification.                 |
+| `EMAIL_PROVIDER`        | No                | `log`                                | Email delivery provider (`brevo`, `resend`, or `log`; `log` forbidden in production). |
+| `EMAIL_FROM`            | Yes               | None                                 | Sender email address for outbound emails.                                             |
+| `EMAIL_FROM_NAME`       | No                | `TODO App`                           | Display name for outbound sender.                                                     |
+| `BREVO_API_KEY`         | For brevo         | None                                 | Brevo API key when `EMAIL_PROVIDER=brevo`.                                            |
+| `RESEND_API_KEY`        | For resend        | None                                 | Resend API key when `EMAIL_PROVIDER=resend`.                                          |
+| `APP_URL`               | For notifications | None                                 | Public origin of the frontend web application for email action links.                 |
+| `REMINDER_LEAD_MINUTES` | No                | `15`                                 | Minutes prior to activity scheduled start time to enqueue email reminder (0-1440).    |
+| `OUTBOX_BATCH_SIZE`     | No                | `20`                                 | Maximum emails claimed per worker outbox drain batch (1-100).                         |
+| `DEEPINFRA_API_KEY`     | For ai-assistant  | None                                 | DeepInfra API key; setting this variable enables the AI assistant module.             |
+| `DEEPINFRA_MODEL`       | No                | `deepseek-ai/DeepSeek-V4-Flash-0731` | Model identifier used for AI completions.                                             |
+| `AI_TIMEOUT_MS`         | No                | `20000`                              | Timeout in milliseconds for DeepInfra API requests (1000-60000).                      |
 
 ## API
 
@@ -155,41 +162,41 @@ All endpoints except `/health`, `/health/ready`, `/v1/meta`, and `/v1/auth/*` re
 
 Outside production, the OpenAPI contract is exposed at `GET /openapi.json` and can be regenerated via `npm run openapi:export`.
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/health` | API process liveness check. |
-| `GET` | `/health/ready` | Database readiness check. |
-| `GET` | `/v1/meta` | Lists all registered module names. |
-| `GET` | `/v1/me` | Fetches the profile of the authenticated user. |
-| `PATCH` | `/v1/me` | Updates user profile settings (`displayName`, `timezone`, `emailNotifications`). |
-| `POST` | `/v1/auth/register` | Verifies Turnstile token, generates Supabase signup code, and emails code. |
-| `POST` | `/v1/auth/password-reset` | Verifies Turnstile token, generates recovery code, and emails code. |
-| `POST` | `/v1/auth/login-code` | Validates existing user profile, generates login OTP code, and emails code. |
-| `GET` | `/v1/activities` | Lists active activities with optional filtering (`from`, `to`, `unscheduled`, `kind`, `status`, `q`, `listId`, `tagId`). |
-| `POST` | `/v1/activities` | Creates a new activity (`habit`, `reminder`, or `task`). |
-| `GET` | `/v1/activities/completed` | Retrieves cursor-paginated completed activities (newest first). |
-| `GET` | `/v1/activities/trash` | Retrieves cursor-paginated trashed activities (newest first). |
-| `GET` | `/v1/activities/:id` | Retrieves an owned activity by ID (including trashed). |
-| `PATCH` | `/v1/activities/:id` | Updates an owned activity. |
-| `POST` | `/v1/activities/:id/trash` | Moves an active activity to the trash. |
-| `POST` | `/v1/activities/:id/restore` | Restores an activity from the trash to active status. |
-| `DELETE` | `/v1/activities/:id` | Permanently deletes a trashed activity (active activities return 409). |
-| `GET` | `/v1/activities/:activityId/subtasks` | Lists checklist subtasks for an activity ordered by position. |
-| `POST` | `/v1/activities/:activityId/subtasks` | Appends a single checklist subtask to an activity. |
-| `POST` | `/v1/activities/:activityId/subtasks/batch` | Appends 1 to 10 checklist subtasks in batch. |
-| `PATCH` | `/v1/subtasks/:id` | Updates a subtask's title or completion status (`isDone`). |
-| `DELETE` | `/v1/subtasks/:id` | Deletes an owned checklist subtask. |
-| `GET` | `/v1/lists` | Lists custom lists ordered by position. |
-| `POST` | `/v1/lists` | Creates a new custom list. |
-| `PATCH` | `/v1/lists/:id` | Updates list name, icon, or position. |
-| `DELETE` | `/v1/lists/:id` | Deletes a custom list (unlinks associated activities). |
-| `GET` | `/v1/tags` | Lists user tags ordered alphabetically by name. |
-| `POST` | `/v1/tags` | Creates a new colored tag. |
-| `PATCH` | `/v1/tags/:id` | Updates tag name or color. |
-| `DELETE` | `/v1/tags/:id` | Deletes a tag (unlinks associated activities). |
-| `GET` | `/v1/summary` | Retrieves dashboard metrics for a given date (`byStatus`, `byKind`, `completedLast7Days`, `overdueReminders`). |
-| `POST` | `/v1/ai/subtask-suggestions` | Generates AI subtask recommendations for an activity title/description. |
-| `POST` | `/v1/ai/daily-brief` | Generates a daily agenda summary message using AI. |
+| Method   | Endpoint                                    | Purpose                                                                                                                  |
+| -------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `GET`    | `/health`                                   | API process liveness check.                                                                                              |
+| `GET`    | `/health/ready`                             | Database readiness check.                                                                                                |
+| `GET`    | `/v1/meta`                                  | Lists all registered module names.                                                                                       |
+| `GET`    | `/v1/me`                                    | Fetches the profile of the authenticated user.                                                                           |
+| `PATCH`  | `/v1/me`                                    | Updates user profile settings (`displayName`, `timezone`, `emailNotifications`).                                         |
+| `POST`   | `/v1/auth/register`                         | Verifies Turnstile token, generates Supabase signup code, and emails code.                                               |
+| `POST`   | `/v1/auth/password-reset`                   | Verifies Turnstile token, generates recovery code, and emails code.                                                      |
+| `POST`   | `/v1/auth/login-code`                       | Validates existing user profile, generates login OTP code, and emails code.                                              |
+| `GET`    | `/v1/activities`                            | Lists active activities with optional filtering (`from`, `to`, `unscheduled`, `kind`, `status`, `q`, `listId`, `tagId`). |
+| `POST`   | `/v1/activities`                            | Creates a new activity (`habit`, `reminder`, or `task`).                                                                 |
+| `GET`    | `/v1/activities/completed`                  | Retrieves cursor-paginated completed activities (newest first).                                                          |
+| `GET`    | `/v1/activities/trash`                      | Retrieves cursor-paginated trashed activities (newest first).                                                            |
+| `GET`    | `/v1/activities/:id`                        | Retrieves an owned activity by ID (including trashed).                                                                   |
+| `PATCH`  | `/v1/activities/:id`                        | Updates an owned activity.                                                                                               |
+| `POST`   | `/v1/activities/:id/trash`                  | Moves an active activity to the trash.                                                                                   |
+| `POST`   | `/v1/activities/:id/restore`                | Restores an activity from the trash to active status.                                                                    |
+| `DELETE` | `/v1/activities/:id`                        | Permanently deletes a trashed activity (active activities return 409).                                                   |
+| `GET`    | `/v1/activities/:activityId/subtasks`       | Lists checklist subtasks for an activity ordered by position.                                                            |
+| `POST`   | `/v1/activities/:activityId/subtasks`       | Appends a single checklist subtask to an activity.                                                                       |
+| `POST`   | `/v1/activities/:activityId/subtasks/batch` | Appends 1 to 10 checklist subtasks in batch.                                                                             |
+| `PATCH`  | `/v1/subtasks/:id`                          | Updates a subtask's title or completion status (`isDone`).                                                               |
+| `DELETE` | `/v1/subtasks/:id`                          | Deletes an owned checklist subtask.                                                                                      |
+| `GET`    | `/v1/lists`                                 | Lists custom lists ordered by position.                                                                                  |
+| `POST`   | `/v1/lists`                                 | Creates a new custom list.                                                                                               |
+| `PATCH`  | `/v1/lists/:id`                             | Updates list name, icon, or position.                                                                                    |
+| `DELETE` | `/v1/lists/:id`                             | Deletes a custom list (unlinks associated activities).                                                                   |
+| `GET`    | `/v1/tags`                                  | Lists user tags ordered alphabetically by name.                                                                          |
+| `POST`   | `/v1/tags`                                  | Creates a new colored tag.                                                                                               |
+| `PATCH`  | `/v1/tags/:id`                              | Updates tag name or color.                                                                                               |
+| `DELETE` | `/v1/tags/:id`                              | Deletes a tag (unlinks associated activities).                                                                           |
+| `GET`    | `/v1/summary`                               | Retrieves dashboard metrics for a given date (`byStatus`, `byKind`, `completedLast7Days`, `overdueReminders`).           |
+| `POST`   | `/v1/ai/subtask-suggestions`                | Generates AI subtask recommendations for an activity title/description.                                                  |
+| `POST`   | `/v1/ai/daily-brief`                        | Generates a daily agenda summary message using AI.                                                                       |
 
 ## Auth Flows
 
@@ -213,6 +220,7 @@ The `auth-gateway` module coordinates user onboarding and recovery with Cloudfla
 ## Email
 
 The platform abstracts email dispatch via the `EmailSender` port with three interchangeable adapters:
+
 - `BrevoEmailSender`: Dispatches transactional emails via the Brevo API (`EMAIL_PROVIDER=brevo`).
 - `ResendEmailSender`: Dispatches emails via the Resend API (`EMAIL_PROVIDER=resend`).
 - `LogEmailSender`: Development/test logger adapter (`EMAIL_PROVIDER=log`; disabled in production).
@@ -220,6 +228,7 @@ The platform abstracts email dispatch via the `EmailSender` port with three inte
 ### Transactional Outbox Pattern
 
 All notifications follow a reliable transactional outbox pattern:
+
 - **Enqueueing**: Reminders and subtask notification emails are written directly to the `email_outbox` table within the same database transaction as the triggering action.
 - **Worker Scanning**: The worker process runs `notifications.reminder-scan` every 60 seconds. It evaluates user timezones, queries reminders within `REMINDER_LEAD_MINUTES`, and inserts outbox rows deduplicated by `(activity_id, remind_at)`.
 - **Worker Draining**: The worker runs `notifications.outbox-drain` every 15 seconds, locking batches with `FOR UPDATE SKIP LOCKED`. Emails are dispatched through `EmailSender` and retried with exponential backoff (2, 4, 8, 16 minutes) up to 5 attempts before terminal failure.
@@ -229,6 +238,7 @@ All notifications follow a reliable transactional outbox pattern:
 ## AI Assistant
 
 The AI assistant module provides intelligent activity breakdowns and daily summaries powered by DeepInfra:
+
 - **Subtask suggestions**: `POST /v1/ai/subtask-suggestions` generates up to five actionable checklist subtask titles for an activity.
 - **Daily brief**: `POST /v1/ai/daily-brief` generates a friendly overview of the user's daily schedule and tasks.
 - **Model selection**: Configured via `DEEPINFRA_MODEL` (defaults to `deepseek-ai/DeepSeek-V4-Flash-0731`).
