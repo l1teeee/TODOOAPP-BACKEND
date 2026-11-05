@@ -97,6 +97,8 @@ Run `npm install`, copy `.env.example` to `.env`, and configure Postgres and you
 
 Modules parse their own environment variables from `ModuleContext.env`.
 
+The notifications module requires `APP_URL`, the frontend public origin without a trailing slash (`http://localhost:3000` locally; HTTPS otherwise). `REMINDER_LEAD_MINUTES` defaults to `15` (0-1440), and `OUTBOX_BATCH_SIZE` defaults to `20` (1-100). Configure these on both the API and worker services.
+
 ## API contract
 
 `GET /openapi.json` is available outside production. Run `npm run openapi:export` to write `openapi.json` for frontend type generation.
@@ -158,6 +160,18 @@ New users have no lists or tags. The frontend can optionally load sample data th
 Subtasks require the same bearer token. A subtask is `{ id, activityId, title, isDone, position }`; titles are trimmed to 1-120 characters and batch titles must be unique after trimming. The `subtasks` module adds `subtaskProgress: { done, total }` to activity responses, with zero counts for an empty checklist. Register the module and generate its migration at integration.
 
 After a single or batch creation commits, the module publishes one `subtasks.created` event with an ISO `occurredAt` timestamp and payload `{ userId, activityId, activityTitle, subtaskTitles }`. Subscribers such as notifications validate this payload independently and do not import the subtasks module.
+
+## Notification emails and dashboard summary
+
+Register `createNotificationsModule(context)` and `createSummaryModule(context)` in `src/modules/index.ts` at integration, and generate the notifications migration before enabling them. Both modules can be removed by deleting their folders and composition-root entries, then generating a migration to drop the notification tables.
+
+The API validates `subtasks.created` events independently, checks the owner's email notification preference, and enqueues one email per creation event. It does not send notification emails. The worker's `notifications.reminder-scan` job runs every 60 seconds, using each profile's timezone to find upcoming reminders within `REMINDER_LEAD_MINUTES`. Completed, trashed and unscheduled reminders and users with email notifications off are excluded. The `(activity_id, remind_at)` primary key deduplicates alerts across worker replicas; changing the reminder time permits a new alert. Recording the reminder and enqueuing its email commit in the same transaction.
+
+The `notifications.outbox-drain` job runs every 15 seconds and claims up to `OUTBOX_BATCH_SIZE` rows with `FOR UPDATE SKIP LOCKED`. It sends through the platform `EmailSender`; set `EMAIL_PROVIDER=brevo` and `BREVO_API_KEY` to use Brevo. Failures retry after 2, 4, 8 and 16 minutes, then become permanently failed after the fifth attempt. Claims older than five minutes can be reclaimed. Delivery is at least once: a crash after provider acceptance but before recording success can result in a duplicate email. Notification logs contain counts and safe error codes, never email addresses or content. Emails use the shared layout and link to the activity in the frontend.
+
+Authenticated `GET /v1/summary?today=YYYY-MM-DD` requires the browser's local date and returns `{ byStatus: { todo, inProgress, completed }, byKind: { habit, reminder, task }, completedLast7Days, overdueReminders }`. One aggregate query counts the user's non-trashed activities. `completedLast7Days` counts completed activities in the preceding seven days; `overdueReminders` counts incomplete reminders scheduled before `today`.
+
+Run the notification jobs as the separate Railway worker service described below, with the notification environment keys and Brevo settings configured. The API service owns migrations; worker replicas share the same database outbox and reminder deduplication records.
 
 ## Auth flows
 

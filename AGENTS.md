@@ -52,6 +52,7 @@ Satellites own their association tables, with foreign keys to `activitiesTable` 
 - Modules render emails with `renderEmail` from `src/platform/email/email-layout.ts`; never build email HTML by hand.
 - `ModuleContext` provides `config`, raw `env` for module-specific variables, `logger`, `db`, `events`, `email` and the `requireUser` authentication hook. Modules attach `requireUser` with `onRequest` so authentication runs before body parsing.
 - Modules are created through `ModuleFactory`; they may provide `registerRoutes` and background `jobs`.
+- Background work lives in module `jobs` and runs in the worker process. Notification producers enqueue email in the database outbox; only the worker drains it through the platform `EmailSender`, with retries and stale-claim recovery. Reminder deduplication and outbox inserts share a transaction.
 - Integration events carry `{ type, occurredAt, payload }`. Subscribers validate their own payload with zod; publishers and subscribers never share payload types. In-process handlers run in order; failures are logged without rejecting publication because the publisher's work is already committed.
 - `USER_PROFILE_CREATED` is `identity.user_profile_created`, with payload `{ userId: string, email: string }`.
 - Modules own their tables in `adapters/persistence/schema.ts`; never edit `drizzle/` by hand; the brain runs `npm run db:generate` after merging.
