@@ -36,6 +36,13 @@ Satellites own their association tables, with foreign keys to `activitiesTable` 
 - Errors are `AppError` with a kind, mapped to HTTP only in `src/platform/http/error-handler.ts`.
 - Use ESM with `.js` import suffixes.
 
+# Observability
+
+- Only `src/platform/observability` imports `@sentry/*` or OpenTelemetry SDK packages; modules log through `context.logger` and may add spans only with `@opentelemetry/api`.
+- Every `error` or `fatal` log becomes a Sentry issue, so use `error` only for failures someone must act on, `warn` for expected or handled problems, and pass errors as `err`.
+- Never put tokens, passwords, email contents or request bodies in logs or span attributes. Query parameters never appear in logs or Sentry; the logger and Sentry strip Drizzle `params:` lines.
+- Parse new observability settings in `observability-config.ts`.
+
 # Commands
 
 - `npm run dev`

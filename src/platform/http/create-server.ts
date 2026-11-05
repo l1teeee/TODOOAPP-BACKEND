@@ -16,6 +16,7 @@ import type { AppConfig } from "../config/env.js";
 import { registerMeRoutes } from "../identity/adapters/http/me-routes.js";
 import { createDrizzleProfileRepository } from "../identity/adapters/persistence/drizzle-profile-repository.js";
 import type { AppModule, ModuleContext } from "../modules/app-module.js";
+import { registerRequestTelemetry } from "../observability/fastify-telemetry.js";
 import { registerErrorHandling } from "./error-handler.js";
 import type { HttpServer } from "./http-server.js";
 import { registerSystemRoutes } from "./system-routes.js";
@@ -39,6 +40,7 @@ export async function createServer(options: {
     genReqId: () => randomUUID(),
   }).withTypeProvider<ZodTypeProvider>();
   server.decorateRequest("user", null);
+  registerRequestTelemetry(server);
   server.setValidatorCompiler(validatorCompiler);
   server.setSerializerCompiler(serializerCompiler);
   server.addHook("onSend", (request, reply, _payload, done) => {
@@ -49,7 +51,14 @@ export async function createServer(options: {
   await server.register(cors, {
     origin: config.http.corsOrigins,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Authorization", "Content-Type"],
+    allowedHeaders: [
+      "Authorization",
+      "Content-Type",
+      "sentry-trace",
+      "baggage",
+      "traceparent",
+      "tracestate",
+    ],
     credentials: false,
     maxAge: 600,
   });
