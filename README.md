@@ -2,216 +2,277 @@
 
 ## Overview
 
-A Fastify 5 API running on Railway. The frontend is in [TODOAPP-FRONT](https://github.com/l1teeee/TODOAPP-FRONT).
-
-## Stack
-
-Node.js 24.x, Fastify 5.12.8, TypeScript 5.9.3 and Zod 4.6.7. The API uses @fastify/cors 11.4.1, @fastify/helmet 13.2.0, @fastify/rate-limit 11.2.2, @fastify/swagger 9.9.3 and fastify-type-provider-zod 7.0.0. The project also includes drizzle-orm 0.45.4, pg 8.23.1, drizzle-kit 0.31.11, ESLint 9.39.5, @eslint/js 9.39.5, typescript-eslint 8.72.1, Prettier 3.9.10, tsx 4.23.15, @types/node 24.19.2 and @types/pg 8.23.1.
-
-Prettier is configured in `.prettierrc.json`, with exclusions in `.prettierignore`.
+A long-running Fastify 5 API deployed on Railway. The frontend application is located in the [TODOAPP-FRONT](https://github.com/l1teeee/TODOAPP-FRONT) repository.
 
 ## Architecture
 
-This modular hexagonal monolith keeps shared configuration, database, Supabase identity, email, events, jobs and HTTP infrastructure in `src/platform`. Feature modules are independent and created through `ModuleFactory` in `src/modules/index.ts`. Each receives a `ModuleContext` with configuration, raw environment, logger, Drizzle database, event bus, email sender and authentication hook. See `AGENTS.md` for dependency and removal rules.
+This project is built as a modular hexagonal monolith. Shared infrastructure lives in the platform layer (`src/platform`), while business capabilities reside in self-contained feature modules (`src/modules`).
 
 ```text
 src/
-  main.ts
-  worker.ts
-  modules/
-    index.ts
-  platform/
-    config/env.ts
-    context/create-platform.ts
-    db/
-      database.ts
-      migrate.ts
-    email/
-    errors/app-error.ts
-    events/event-bus.ts
-    http/
-      create-server.ts
-      error-handler.ts
-      http-server.ts
-      system-routes.ts
-    identity/
-      domain/
-      application/
-      adapters/
-    jobs/
-      background-job.ts
-      run-jobs.ts
-    logging/create-logger.ts
-    modules/app-module.ts
-  scripts/export-openapi.ts
+├── main.ts                     # API process entry point & composition root
+├── worker.ts                   # Background worker process entry point
+├── scripts/
+│   └── export-openapi.ts       # Script to export openapi.json
+├── platform/                   # Shared platform kernel (never imports from modules)
+│   ├── config/                 # Environment parsing and validation
+│   ├── context/                # Platform context factory
+│   ├── db/                     # Drizzle database client and migration runners
+│   ├── email/                  # EmailSender port, Brevo/Resend/log adapters, layout
+│   ├── errors/                 # AppError domain error definitions
+│   ├── events/                 # In-process asynchronous event bus
+│   ├── http/                   # Fastify server, middleware, routes, error handler
+│   ├── identity/               # Supabase JWT verification and profile persistence
+│   ├── jobs/                   # Background job runner
+│   └── logging/                # Pino logger configuration
+└── modules/                    # Hexagonal feature modules
+    ├── index.ts                # Modules composition root
+    ├── activities/             # Core activities module (habits, reminders, tasks)
+    ├── auth-gateway/           # Turnstile verification & Supabase OTP auth gateway
+    ├── lists/                  # Activity lists satellite
+    ├── tags/                   # Colored activity tags satellite
+    ├── subtasks/               # Checklist subtasks satellite
+    ├── notifications/          # Reminder scans, email outbox & worker jobs
+    ├── summary/                # Aggregated dashboard metrics
+    └── ai-assistant/           # DeepInfra AI suggestions and daily briefing
 ```
 
-## Requirements
+### Module Independence and Extension Points
 
-Node.js 24 and npm.
+- **Zero cross-module imports**: Modules never directly import other modules. Satellite modules interact with core activities exclusively through the contract in `src/modules/activities/public.ts`.
+- **Extension points**: Activities provides three registration hooks before HTTP routes freeze:
+  - `addView({ field, schema, fallback, load })`: Appends custom fields to activity responses (e.g., `listId`, `tagIds`, `subtaskProgress`) using single batched queries.
+  - `addFilter({ param, schema, condition })`: Appends query filters to the list endpoint (e.g., filtering by `listId` or `tagId`).
+  - `addWrite({ field, schema, apply })`: Handles create and patch mutations within the core activity database transaction.
+- **Asynchronous events**: Decoupled domain interactions use the platform event bus. For example, subtask creation emits `subtasks.created`, which the notifications module consumes independently without importing subtask types.
+- **Removing a module**:
+  1. Delete its folder under `src/modules/<name>/`.
+  2. Remove its initialization from `src/modules/index.ts`.
+  3. Generate and apply a migration to drop its tables (`npm run db:generate && npm run db:migrate:dev`).
+  No other module or platform code needs modification.
 
-## Getting started
+## Stack
 
-Run `npm install`, copy `.env.example` to `.env`, and configure Postgres and your Supabase project origin. Apply the generated migrations with `npm run db:migrate:dev`, then run `npm run dev`. Visit http://localhost:4000/health for liveness and http://localhost:4000/health/ready for database readiness. Run `npm run dev:worker` in a separate terminal for module jobs.
+- **Runtime & Language**: Node.js `24.x`, TypeScript `5.9.3` (ESM with `.js` import suffixes).
+- **Web Framework & HTTP**: Fastify `5.12.8`, `@fastify/cors` `11.4.1`, `@fastify/helmet` `13.2.0`, `@fastify/rate-limit` `11.2.2`, `@fastify/swagger` `9.9.3`, `fastify-type-provider-zod` `7.0.0`.
+- **Validation**: Zod `4.6.7`.
+- **Database & ORM**: PostgreSQL `pg` `8.23.1`, Drizzle ORM `drizzle-orm` `0.45.4`, Drizzle Kit `drizzle-kit` `0.31.11`.
+- **Authentication & Identity**: Supabase Client `@supabase/supabase-js` `2.119.0`, Jose `jose` `6.2.15`.
+- **Logging**: Pino `pino` `10.4.0`.
+- **Development & Linting**: ESLint `9.39.5`, `@eslint/js` `9.39.5`, `typescript-eslint` `8.72.1`, Prettier `3.9.10`, `tsx` `4.23.15`, `@types/node` `24.19.2`, `@types/pg` `8.23.1`.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 24.x and npm
+- A running PostgreSQL database instance (local or remote)
+- A Supabase project (for authentication and profile management)
+
+### Local Setup
+
+1. Clone the repository and install dependencies:
+   ```bash
+   npm install
+   ```
+   *Note: `npm install` automatically triggers the `prepare` script to configure git hooks in `.githooks`.*
+
+2. Configure environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` to supply your database URL and Supabase credentials.
+
+3. Run database migrations:
+   ```bash
+   npm run db:migrate:dev
+   ```
+
+4. Start the API development server:
+   ```bash
+   npm run dev
+   ```
+   The API will listen at `http://localhost:4000`. Check liveness at `/health` and database readiness at `/health/ready`.
+
+5. Start the background worker process in a separate terminal:
+   ```bash
+   npm run dev:worker
+   ```
 
 ## Scripts
 
-| Script                   | Description                                   |
-| ------------------------ | --------------------------------------------- |
-| `npm run dev`            | Start the API in watch mode.                  |
-| `npm run dev:worker`     | Start the worker in watch mode.               |
-| `npm run build`          | Compile TypeScript.                           |
-| `npm run start`          | Start the compiled API.                       |
-| `npm run start:worker`   | Start the compiled worker.                    |
-| `npm run db:generate`    | Generate migrations from persistence schemas. |
-| `npm run db:migrate`     | Apply migrations using the compiled runner.   |
-| `npm run db:migrate:dev` | Apply migrations from TypeScript with `.env`. |
-| `npm run lint`           | Run ESLint.                                   |
-| `npm run format`         | Format files with Prettier.                   |
-| `npm run format:check`   | Check formatting with Prettier.               |
-| `npm run typecheck`      | Check TypeScript types.                       |
-| `npm run check`          | Run lint, format check, typecheck and build.  |
-| `npm run openapi:export` | Export the OpenAPI contract.                  |
+| Script | Description |
+| --- | --- |
+| `npm run dev` | Starts the API server in watch mode using `tsx` and `.env`. |
+| `npm run dev:worker` | Starts the background worker in watch mode using `tsx` and `.env`. |
+| `npm run build` | Compiles TypeScript source files into `dist/`. |
+| `npm run start` | Runs the compiled production API server from `dist/main.js`. |
+| `npm run start:worker` | Runs the compiled production worker process from `dist/worker.js`. |
+| `npm run db:generate` | Generates SQL migration files from Drizzle schema definitions. |
+| `npm run db:migrate` | Runs pending database migrations using the compiled migration runner. |
+| `npm run db:migrate:dev` | Runs pending database migrations directly in TypeScript using `.env`. |
+| `npm run lint` | Lints codebase using ESLint. |
+| `npm run format` | Formats all files with Prettier. |
+| `npm run format:check` | Checks code formatting against Prettier rules. |
+| `npm run typecheck` | Validates TypeScript types without emitting files. |
+| `npm run check` | Runs lint, format check, typecheck, and build in sequence. |
+| `npm run openapi:export` | Generates the OpenAPI 3 specification file (`openapi.json`). |
+| `npm run prepare` | Configures git hooks directory (`core.hooksPath=.githooks`). |
 
-## Environment variables
+## Environment Variables
 
-| Name                   | Required      | Default    | Description                                                                         |
-| ---------------------- | ------------- | ---------- | ----------------------------------------------------------------------------------- |
-| `NODE_ENV`             | Yes           | None       | `development`, `test` or `production`.                                              |
-| `HOST`                 | No            | `0.0.0.0`  | Listening address.                                                                  |
-| `PORT`                 | No            | `4000`     | Listening port.                                                                     |
-| `LOG_LEVEL`            | No            | `info`     | Minimum log level.                                                                  |
-| `CORS_ORIGINS`         | Yes           | —          | Comma-separated allowed origins.                                                    |
-| `TRUST_PROXY_HOPS`     | In production | `0`        | Trusted proxy hops (0-5); use `1` on Railway.                                       |
-| `RATE_LIMIT_MAX`       | No            | `300`      | Maximum requests per window.                                                        |
-| `RATE_LIMIT_WINDOW_MS` | No            | `60000`    | Rate limit window in milliseconds.                                                  |
-| `DATABASE_URL`         | Yes           | None       | Postgres URL starting with `postgres://` or `postgresql://`.                        |
-| `DATABASE_POOL_MAX`    | No            | `10`       | Maximum connections per API or worker process (1-50).                               |
-| `DATABASE_SSL`         | No            | `false`    | `true` enables Postgres TLS.                                                        |
-| `SUPABASE_URL`         | Yes           | None       | Supabase HTTPS origin without a trailing slash; used for issuer and JWKS discovery. |
-| `EMAIL_PROVIDER`       | No            | `log`      | `brevo`, `resend` or `log`; production requires brevo or resend.                    |
-| `EMAIL_FROM`           | Yes           | None       | Sender email address.                                                               |
-| `EMAIL_FROM_NAME`      | No            | `TODO App` | Sender display name.                                                                |
-| `BREVO_API_KEY`        | For brevo     | None       | Brevo transactional email API key.                                                  |
-| `RESEND_API_KEY`       | For resend    | None       | Resend email API key.                                                               |
+| Name | Required | Default | Description |
+| --- | --- | --- | --- |
+| `NODE_ENV` | Yes | None | Runtime environment (`development`, `test`, `production`). |
+| `HOST` | No | `0.0.0.0` | IP address for the HTTP server to bind to. |
+| `PORT` | No | `4000` | Port number for the HTTP server to listen on. |
+| `LOG_LEVEL` | No | `info` | Minimum log level (`fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`). |
+| `CORS_ORIGINS` | Yes | None | Comma-separated allowed browser origins (no paths or trailing slashes). |
+| `TRUST_PROXY_HOPS` | In production | `0` | Number of trusted reverse proxy hops (0-5); set to `1` on Railway. |
+| `RATE_LIMIT_MAX` | No | `300` | Maximum requests allowed per rate limit window per client. |
+| `RATE_LIMIT_WINDOW_MS` | No | `60000` | Rate limit window duration in milliseconds. |
+| `DATABASE_URL` | Yes | None | PostgreSQL connection URI (`postgres://` or `postgresql://`). |
+| `DATABASE_POOL_MAX` | No | `10` | Maximum database connection pool size per process (1-50). |
+| `DATABASE_SSL` | No | `false` | Enables TLS for PostgreSQL connection; required in production outside Railway. |
+| `SUPABASE_URL` | Yes | None | Supabase project HTTPS URL without trailing slash; used for JWKS token verification. |
+| `SUPABASE_SECRET_KEY` | For auth-gateway | None | Supabase service role secret key; server-only, never expose to client. |
+| `TURNSTILE_SECRET_KEY` | For auth-gateway | None | Cloudflare Turnstile secret key for server-side captcha verification. |
+| `EMAIL_PROVIDER` | No | `log` | Email delivery provider (`brevo`, `resend`, or `log`; `log` forbidden in production). |
+| `EMAIL_FROM` | Yes | None | Sender email address for outbound emails. |
+| `EMAIL_FROM_NAME` | No | `TODO App` | Display name for outbound sender. |
+| `BREVO_API_KEY` | For brevo | None | Brevo API key when `EMAIL_PROVIDER=brevo`. |
+| `RESEND_API_KEY` | For resend | None | Resend API key when `EMAIL_PROVIDER=resend`. |
+| `APP_URL` | For notifications | None | Public origin of the frontend web application for email action links. |
+| `REMINDER_LEAD_MINUTES` | No | `15` | Minutes prior to activity scheduled start time to enqueue email reminder (0-1440). |
+| `OUTBOX_BATCH_SIZE` | No | `20` | Maximum emails claimed per worker outbox drain batch (1-100). |
+| `DEEPINFRA_API_KEY` | For ai-assistant | None | DeepInfra API key; setting this variable enables the AI assistant module. |
+| `DEEPINFRA_MODEL` | No | `deepseek-ai/DeepSeek-V4-Flash-0731` | Model identifier used for AI completions. |
+| `AI_TIMEOUT_MS` | No | `20000` | Timeout in milliseconds for DeepInfra API requests (1000-60000). |
 
-Modules parse their own environment variables from `ModuleContext.env`.
+## API
 
-The notifications module requires `APP_URL`, the frontend public origin without a trailing slash (`http://localhost:3000` locally; HTTPS otherwise). `REMINDER_LEAD_MINUTES` defaults to `15` (0-1440), and `OUTBOX_BATCH_SIZE` defaults to `20` (1-100). Configure these on both the API and worker services.
+All endpoints except `/health`, `/health/ready`, `/v1/meta`, and `/v1/auth/*` require authentication via a Supabase bearer token: `Authorization: Bearer <access_token>`. The token is cryptographically verified against Supabase JWKS endpoints, ensuring issuer, audience, and expiry are valid. The authenticated user ID is strictly derived from the verified token claims.
 
-## API contract
+Outside production, the OpenAPI contract is exposed at `GET /openapi.json` and can be regenerated via `npm run openapi:export`.
 
-`GET /openapi.json` is available outside production. Run `npm run openapi:export` to write `openapi.json` for frontend type generation.
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | API process liveness check. |
+| `GET` | `/health/ready` | Database readiness check. |
+| `GET` | `/v1/meta` | Lists all registered module names. |
+| `GET` | `/v1/me` | Fetches the profile of the authenticated user. |
+| `PATCH` | `/v1/me` | Updates user profile settings (`displayName`, `timezone`, `emailNotifications`). |
+| `POST` | `/v1/auth/register` | Verifies Turnstile token, generates Supabase signup code, and emails code. |
+| `POST` | `/v1/auth/password-reset` | Verifies Turnstile token, generates recovery code, and emails code. |
+| `POST` | `/v1/auth/login-code` | Validates existing user profile, generates login OTP code, and emails code. |
+| `GET` | `/v1/activities` | Lists active activities with optional filtering (`from`, `to`, `unscheduled`, `kind`, `status`, `q`, `listId`, `tagId`). |
+| `POST` | `/v1/activities` | Creates a new activity (`habit`, `reminder`, or `task`). |
+| `GET` | `/v1/activities/completed` | Retrieves cursor-paginated completed activities (newest first). |
+| `GET` | `/v1/activities/trash` | Retrieves cursor-paginated trashed activities (newest first). |
+| `GET` | `/v1/activities/:id` | Retrieves an owned activity by ID (including trashed). |
+| `PATCH` | `/v1/activities/:id` | Updates an owned activity. |
+| `POST` | `/v1/activities/:id/trash` | Moves an active activity to the trash. |
+| `POST` | `/v1/activities/:id/restore` | Restores an activity from the trash to active status. |
+| `DELETE` | `/v1/activities/:id` | Permanently deletes a trashed activity (active activities return 409). |
+| `GET` | `/v1/activities/:activityId/subtasks` | Lists checklist subtasks for an activity ordered by position. |
+| `POST` | `/v1/activities/:activityId/subtasks` | Appends a single checklist subtask to an activity. |
+| `POST` | `/v1/activities/:activityId/subtasks/batch` | Appends 1 to 10 checklist subtasks in batch. |
+| `PATCH` | `/v1/subtasks/:id` | Updates a subtask's title or completion status (`isDone`). |
+| `DELETE` | `/v1/subtasks/:id` | Deletes an owned checklist subtask. |
+| `GET` | `/v1/lists` | Lists custom lists ordered by position. |
+| `POST` | `/v1/lists` | Creates a new custom list. |
+| `PATCH` | `/v1/lists/:id` | Updates list name, icon, or position. |
+| `DELETE` | `/v1/lists/:id` | Deletes a custom list (unlinks associated activities). |
+| `GET` | `/v1/tags` | Lists user tags ordered alphabetically by name. |
+| `POST` | `/v1/tags` | Creates a new colored tag. |
+| `PATCH` | `/v1/tags/:id` | Updates tag name or color. |
+| `DELETE` | `/v1/tags/:id` | Deletes a tag (unlinks associated activities). |
+| `GET` | `/v1/summary` | Retrieves dashboard metrics for a given date (`byStatus`, `byKind`, `completedLast7Days`, `overdueReminders`). |
+| `POST` | `/v1/ai/subtask-suggestions` | Generates AI subtask recommendations for an activity title/description. |
+| `POST` | `/v1/ai/daily-brief` | Generates a daily agenda summary message using AI. |
 
-Send the Supabase access token as `Authorization: Bearer <token>` to `GET /v1/me` or `PATCH /v1/me`. The API verifies the token against Supabase JWKS and ensures a local profile. PATCH accepts `displayName` (trimmed, 1-80 characters, or null), `timezone` (from `Intl.supportedValuesOf("timeZone")`) and `emailNotifications` (boolean), with at least one field and no extra keys.
+## Auth Flows
 
-All activities endpoints require the same Supabase bearer token and scope data to the authenticated user.
+The `auth-gateway` module coordinates user onboarding and recovery with Cloudflare Turnstile bot verification and Supabase Admin OTP generation, delivering branded transactional emails via the platform email sender:
 
-| Method | Endpoint                                    | Response                    | Purpose                                                                       |
-| ------ | ------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------- |
-| GET    | `/v1/activities`                            | 200 `{ items }`             | List active habits, reminders and tasks.                                      |
-| GET    | `/v1/activities/completed`                  | 200 `{ items, nextCursor }` | Page through completed activities, newest first.                              |
-| GET    | `/v1/activities/trash`                      | 200 `{ items, nextCursor }` | Page through trashed activities, newest first.                                |
-| GET    | `/v1/activities/:id`                        | 200 activity                | Read an owned activity, including one in the trash.                           |
-| POST   | `/v1/activities`                            | 201 activity                | Create an activity with required `kind` and `title`.                          |
-| PATCH  | `/v1/activities/:id`                        | 200 activity                | Update fields; set `status: "completed"` to complete it. `kind` is immutable. |
-| POST   | `/v1/activities/:id/trash`                  | 200 activity                | Move an activity to the trash.                                                |
-| POST   | `/v1/activities/:id/restore`                | 200 activity                | Restore an activity from the trash.                                           |
-| DELETE | `/v1/activities/:id`                        | 204                         | Permanently delete a trashed activity; an active activity returns 409.        |
-| GET    | `/v1/activities/:activityId/subtasks`       | 200 `{ items }`             | List an owned, active activity's checklist by position, then creation time.   |
-| POST   | `/v1/activities/:activityId/subtasks`       | 201 subtask                 | Append a checklist item with `{ title }`.                                     |
-| POST   | `/v1/activities/:activityId/subtasks/batch` | 201 `{ items }`             | Append 1-10 unique titles with `{ titles }`, including AI suggestions.        |
-| PATCH  | `/v1/subtasks/:id`                          | 200 subtask                 | Update `title`, `isDone`, or both; at least one field is required.            |
-| DELETE | `/v1/subtasks/:id`                          | 204                         | Delete an owned checklist item.                                               |
+- **Register**: Frontend completes a Cloudflare Turnstile challenge, then sends `{ email, password, fullName, turnstileToken }` to `POST /v1/auth/register`. The backend validates Turnstile, requests a signup OTP code using the Supabase admin API, and dispatches the code via email. The frontend completes signup by invoking Supabase client `verifyOtp({ email, token: code, type: "signup" })`.
+- **Forgot Password**: Frontend completes Turnstile challenge and sends `{ email, turnstileToken }` to `POST /v1/auth/password-reset`. The backend generates a recovery code via Supabase admin and emails it. The frontend invokes Supabase `verifyOtp({ email, token: code, type: "recovery" })` and updates credentials with `updateUser({ password })`.
+- **Login with Code**: Frontend sends `{ email }` to `POST /v1/auth/login-code` (Turnstile omitted). The backend confirms a profile exists for the email, generates a login OTP via Supabase admin, and emails it. The frontend authenticates via `verifyOtp({ email, token: code, type: "magiclink" })`.
+- **Login with Password**: Frontend authenticates directly against Supabase auth.
 
-The active list accepts `from` and `to` together (real `YYYY-MM-DD` dates, inclusive, at most 62 days), `unscheduled=true` (undated activities excluding habits), `kind`, `status`, `q` (literal text search), and `limit` (1-500, default 300). Date ranges also include habits. Completed and trash lists accept an opaque `cursor` and `limit` (1-100, default 50); pass `nextCursor` for the next page. Times use `HH:MM`, timestamps use ISO strings, and nullable fields accept null. Habits cannot have a scheduled date or location; reminders require a scheduled date and start time; an end time must follow the start time. Satellite response fields, filters and write fields are registered before routes and appear in OpenAPI.
+### Security and Rate Limits
 
-### Lists
+- All three gateway routes return `202 Accepted` immediately while background dispatch proceeds, preventing email enumeration.
+- Auth endpoints enforce IP rate limiting (5 requests per 15 minutes) and a distributed 60-second cooldown per hashed email stored in `auth_email_cooldowns` (using SHA-256 hashes of trimmed, lowercased emails).
+- Required Supabase dashboard configurations:
+  - Disable **Allow new users to sign up** under Auth providers (ensures public signups cannot bypass Turnstile).
+  - Set **Email OTP expiry** to 3600 seconds.
+  - Set **Email OTP length** to 6 (matching frontend `NEXT_PUBLIC_OTP_LENGTH`).
+  - Configure **Site URL** to match the frontend origin.
 
-All lists endpoints require the Supabase bearer token and scope data to the authenticated user. List JSON is `{ id, name, icon, position }`.
+## Email
 
-| Method | Endpoint        | Response        | Purpose                                                                  |
-| ------ | --------------- | --------------- | ------------------------------------------------------------------------ |
-| GET    | `/v1/lists`     | 200 `{ items }` | List lists ordered by position, then creation time.                      |
-| POST   | `/v1/lists`     | 201 list        | Create a list with `{ name, icon }`, after the current maximum position. |
-| PATCH  | `/v1/lists/:id` | 200 list        | Update one or more of `{ name, icon, position }`.                        |
-| DELETE | `/v1/lists/:id` | 204             | Delete the list and its associations; activities stay.                   |
+The platform abstracts email dispatch via the `EmailSender` port with three interchangeable adapters:
+- `BrevoEmailSender`: Dispatches transactional emails via the Brevo API (`EMAIL_PROVIDER=brevo`).
+- `ResendEmailSender`: Dispatches emails via the Resend API (`EMAIL_PROVIDER=resend`).
+- `LogEmailSender`: Development/test logger adapter (`EMAIL_PROVIDER=log`; disabled in production).
 
-Names are trimmed to 1-40 characters and unique per user ignoring case. Icons match `^[a-z0-9-]{1,40}$`; position updates accept integers from 0 to 999. New lists get the user's current maximum position plus one, computed in the insert statement, starting at 0 for an empty workspace. Missing or unowned lists return `LIST_NOT_FOUND` (404); duplicate names return `LIST_NAME_TAKEN` (409). Creating a list when the user already has 200 returns `LIST_LIMIT_REACHED` (409).
+### Transactional Outbox Pattern
 
-The lists factory registers activity extensions before routes: the response field `listId` is a UUID or null, the active activity list accepts a `listId` UUID filter, and activity create/patch accepts `listId` to assign an owned list or null to clear it. Associations are written in the activity transaction and response values load in one batched query.
+All notifications follow a reliable transactional outbox pattern:
+- **Enqueueing**: Reminders and subtask notification emails are written directly to the `email_outbox` table within the same database transaction as the triggering action.
+- **Worker Scanning**: The worker process runs `notifications.reminder-scan` every 60 seconds. It evaluates user timezones, queries reminders within `REMINDER_LEAD_MINUTES`, and inserts outbox rows deduplicated by `(activity_id, remind_at)`.
+- **Worker Draining**: The worker runs `notifications.outbox-drain` every 15 seconds, locking batches with `FOR UPDATE SKIP LOCKED`. Emails are dispatched through `EmailSender` and retried with exponential backoff (2, 4, 8, 16 minutes) up to 5 attempts before terminal failure.
+- **Cleanup**: The worker runs `notifications.outbox-cleanup` hourly to purge delivered outbox records.
+- **Email Design & Deliverability**: Emails are rendered with `renderEmail` (`src/platform/email/email-layout.ts`) using a responsive, accessible layout. Ensure your custom sender domain is fully verified with SPF and DKIM in Brevo or Resend for production delivery.
 
-### Tags
+## AI Assistant
 
-All tags endpoints require the Supabase bearer token and scope data to the authenticated user. Tag JSON is `{ id, name, color }`.
-
-| Method | Endpoint       | Response        | Purpose                                               |
-| ------ | -------------- | --------------- | ----------------------------------------------------- |
-| GET    | `/v1/tags`     | 200 `{ items }` | List tags ordered by name.                            |
-| POST   | `/v1/tags`     | 201 tag         | Create a tag with `{ name, color }`.                  |
-| PATCH  | `/v1/tags/:id` | 200 tag         | Update one or more of `{ name, color }`.              |
-| DELETE | `/v1/tags/:id` | 204             | Delete the tag and its associations; activities stay. |
-
-Names are trimmed, lowercased and must match `^[a-z0-9][a-z0-9-]{0,29}$`, with case-insensitive uniqueness per user. Colors are `purple`, `blue`, `pink`, `orange`, `green` or `gray`. Missing or unowned tags return `TAG_NOT_FOUND` (404); duplicate names return `TAG_NAME_TAKEN` (409). Creating a tag when the user already has 200 returns `TAG_LIMIT_REACHED` (409).
-
-The tags factory registers activity extensions before routes: the response field `tagIds` is an array of UUIDs (empty when untagged), the active activity list accepts a `tagId` UUID filter, and activity create/patch accepts `tagIds` with at most 10 unique owned tag UUIDs. Writing `tagIds` replaces the set; an empty array clears it. Ownership is checked in one count query, replacements use the activity transaction, and response values load in one batched query.
-
-New users have no lists or tags. The frontend can optionally load sample data through these same endpoints. Register `createListsModule(context, activities)` and `createTagsModule(context, activities)` in the composition root after creating activities and before registering routes; generate their migrations at integration. The modules import activities only through `public.ts` and never import each other. Remove either module's folder and composition-root lines, then generate a migration dropping its tables, to keep activities and the other module working. Extension names are unique within their response, query or body category; the same name can appear across categories. Registration freezes when activity routes are built.
-Subtasks require the same bearer token. A subtask is `{ id, activityId, title, isDone, position }`; titles are trimmed to 1-120 characters and batch titles must be unique after trimming. The `subtasks` module adds `subtaskProgress: { done, total }` to activity responses, with zero counts for an empty checklist. Register the module and generate its migration at integration.
-
-After a single or batch creation commits, the module publishes one `subtasks.created` event with an ISO `occurredAt` timestamp and payload `{ userId, activityId, activityTitle, subtaskTitles }`. Subscribers such as notifications validate this payload independently and do not import the subtasks module.
-
-## Notification emails and dashboard summary
-
-Register `createNotificationsModule(context)` and `createSummaryModule(context)` in `src/modules/index.ts` at integration, and generate the notifications migration before enabling them. Both modules can be removed by deleting their folders and composition-root entries, then generating a migration to drop the notification tables.
-
-The API validates `subtasks.created` events independently, checks the owner's email notification preference, and enqueues one email per creation event. It does not send notification emails. The worker's `notifications.reminder-scan` job runs every 60 seconds, using each profile's timezone to find upcoming reminders within `REMINDER_LEAD_MINUTES`. Completed, trashed and unscheduled reminders and users with email notifications off are excluded. The `(activity_id, remind_at)` primary key deduplicates alerts across worker replicas; changing the reminder time permits a new alert. Recording the reminder and enqueuing its email commit in the same transaction.
-
-The `notifications.outbox-drain` job runs every 15 seconds and claims up to `OUTBOX_BATCH_SIZE` rows with `FOR UPDATE SKIP LOCKED`. It sends through the platform `EmailSender`; set `EMAIL_PROVIDER=brevo` and `BREVO_API_KEY` to use Brevo. Failures retry after 2, 4, 8 and 16 minutes, then become permanently failed after the fifth attempt. Claims older than five minutes can be reclaimed. Delivery is at least once: a crash after provider acceptance but before recording success can result in a duplicate email. Notification logs contain counts and safe error codes, never email addresses or content. Emails use the shared layout and link to the activity in the frontend.
-
-Authenticated `GET /v1/summary?today=YYYY-MM-DD` requires the browser's local date and returns `{ byStatus: { todo, inProgress, completed }, byKind: { habit, reminder, task }, completedLast7Days, overdueReminders }`. One aggregate query counts the user's non-trashed activities. `completedLast7Days` counts completed activities in the preceding seven days; `overdueReminders` counts incomplete reminders scheduled before `today`.
-
-Run the notification jobs as the separate Railway worker service described below, with the notification environment keys and Brevo settings configured. The API service owns migrations; worker replicas share the same database outbox and reminder deduplication records.
-
-## Auth flows
-
-The `auth-gateway` module is registered in `src/modules/index.ts`. Configure `TURNSTILE_SECRET_KEY` and the server-only `SUPABASE_SECRET_KEY` (a Supabase secret or service_role key). Set `EMAIL_PROVIDER=brevo` and configure the platform email sender to deliver these emails through Brevo. Brevo needs an authenticated sender domain for good delivery. All auth emails use the shared minimalist `renderEmail` layout from `src/platform/email/email-layout.ts`, which is also available for future reminder emails.
-
-- Register: the frontend obtains a Turnstile token, then sends `{ email, password, fullName, turnstileToken }` to `POST /v1/auth/register`. The API verifies Turnstile, generates a signup code with the Supabase admin API, and sends the code through the platform email sender. The frontend confirms the email with Supabase `verifyOtp({ email, token: code, type: "signup" })`.
-- Forgot password: the frontend obtains a Turnstile token and sends `{ email, turnstileToken }` to `POST /v1/auth/password-reset`. The API generates and emails a recovery code. The frontend calls Supabase `verifyOtp({ email, token: code, type: "recovery" })`, then `updateUser({ password })` using the resulting session.
-- Login with a code: the frontend sends only `{ email }` to `POST /v1/auth/login-code`, without Turnstile. The API checks for an existing platform profile before generating and emailing a six-digit login code. The frontend verifies it with Supabase `verifyOtp({ email, token, type: "magiclink" })` to obtain a session.
-- Login with a password: the frontend authenticates directly against Supabase.
-
-All three API routes return `202` while code generation and email delivery run in the background. Only registration and password reset require CAPTCHA verification. Registration returns `{ status: "verification_sent" }`, password reset returns `{ status: "reset_sent" }`, and login code returns `{ status: "code_sent" }`, regardless of whether the email exists. An existing account receives an account reminder on registration; if signup was unfinished, it directs the recipient to use Forgot password to set a new password and confirm the email. An unknown email receives no recovery or login email; the login-code route does not create users. Each route allows five requests per IP every 15 minutes.
-
-All three flows share a 60-second per-email cooldown across replicas. The database stores only a SHA-256 hex hash of the trimmed, lowercased email in `auth_email_cooldowns`; requests during the cooldown silently skip code generation and delivery and keep the same `202` response. Generate the migration for this module's `adapters/persistence/schema.ts` at integration before enabling the module. Background tasks have a 15-second timeout, clear their timers when settled, and log failures using only the event and error code or status. The timeout bounds shutdown waiting without cancelling underlying operations.
-
-Registration trims full names to 1-80 characters, permits only Unicode letters and marks, spaces, apostrophes, hyphens and periods, and collapses inner whitespace. Passwords require 8-72 characters, at least one letter and one digit, and at most 72 UTF-8 bytes. Cloudflare test secrets beginning with `1x0000`, `2x0000` or `3x0000` are rejected in production.
-
-Required Supabase settings: disable **Allow new users to sign up** so public signup cannot bypass Turnstile (admin-generated sign-ups still work), set email OTP length to **6**, OTP expiry to **3600 seconds**, and password minimum length to **8**. The browser handles code verification and password updates directly against Supabase; the API uses admin-generated codes so Supabase does not send these emails.
-
-## AI assistant
-
-Set `DEEPINFRA_API_KEY` on Railway to enable the AI assistant module. `DEEPINFRA_MODEL` selects the model and defaults to `deepseek-ai/DeepSeek-V4-Flash-0731`. Authenticated clients can send an activity title and optional description to `POST /v1/ai/subtask-suggestions` to receive up to five suggested subtask titles. The activity text is sent to DeepInfra to generate the suggestions.
-
-Authenticated clients can send a first name, local time, locale and today's items to `POST /v1/ai/daily-brief` to receive a friendly reminder message. Activity titles and times are sent to DeepInfra along with the other supplied details. When the module is off, the frontend falls back to a local message.
+The AI assistant module provides intelligent activity breakdowns and daily summaries powered by DeepInfra:
+- **Subtask suggestions**: `POST /v1/ai/subtask-suggestions` generates up to five actionable checklist subtask titles for an activity.
+- **Daily brief**: `POST /v1/ai/daily-brief` generates a friendly overview of the user's daily schedule and tasks.
+- **Model selection**: Configured via `DEEPINFRA_MODEL` (defaults to `deepseek-ai/DeepSeek-V4-Flash-0731`).
+- **Privacy and security**: AI requests are bounded in size (input strings truncated to schema limits). Model responses are treated as untrusted plain text—never evaluated as code or interpolated into SQL. The module is disabled automatically when `DEEPINFRA_API_KEY` is not set.
 
 ## Deploy on Railway
 
-Create a new service from [TODOOAPP-BACKEND](https://github.com/l1teeee/TODOOAPP-BACKEND). Railway uses the Railpack builder configured in `railway.json`. Set the environment variables, including `TRUST_PROXY_HOPS=1`, generate a public domain, and use `/health` as the healthcheck.
+The production architecture consists of three interconnected Railway services:
 
-Set `NODE_ENV=production`, `DATABASE_URL`, `SUPABASE_URL`, `EMAIL_FROM` and a production email provider with its API key. Configure `DATABASE_SSL` for your Postgres connection. `/health/ready` returns 503 when the database cannot be reached.
+1. **Postgres Service**: Managed Railway PostgreSQL database. Use the internal network URL (`DATABASE_URL`) with `.railway.internal` host to avoid public network hops and disable SSL overhead (`DATABASE_SSL=false`).
+2. **API Service**:
+   - Configured via `railway.json`.
+   - Pre-deploy command runs migrations: `npm run db:migrate`.
+   - Start command: `npm run start`.
+   - Healthcheck path: `/health` with 60s timeout.
+   - Set `TRUST_PROXY_HOPS=1` to accurately detect client IP behind Railway's reverse proxy.
+   - Set `CORS_ORIGINS` to your production frontend domain (e.g., `https://your-app.vercel.app`).
+3. **Worker Service**:
+   - Long-running service configured via `railway.worker.json`.
+   - Start command: `npm run start:worker`.
+   - Shares the same environment variables and database as the API service. Runs background reminder scans, outbox draining, and cleanup.
 
-The API service runs `npm run db:migrate` as its pre-deploy command after the build and before starting the new deployment. Modules own their tables in `adapters/persistence/schema.ts`; generate migrations with `npm run db:generate` after merging schema changes and include the generated `drizzle/` files in the deployment. Never edit migrations by hand. An initial generated migration is required before deploying the profiles table.
+## Security
 
-Create a second, long-running Railway service from the same repository for the worker. Set its config file to `/railway.worker.json` and give it the same platform environment variables. It builds the same code and starts with `npm run start:worker`; the API service owns migrations. Each module job runs without overlap, waits its interval after completion, and logs failures before continuing. SIGTERM and SIGINT stop jobs, await active runs and close the database, with a 10-second shutdown limit.
+- **Dependabot**: Configured in `.github/dependabot.yml` to generate automated weekly dependency updates and security patches.
+- **Review Agents**: Pre-merge code inspections are enforced using specialized agents:
+  - `.claude/agents/security-reviewer.md`: Verifies authentication, authorization, IDOR prevention, injection safety, and secret handling.
+  - `.claude/agents/quality-reviewer.md`: Enforces hexagonal modular architecture, independence, and code cleanliness.
+- **Snyk Integration**: Scans dependencies (Snyk Open Source) and source code (Snyk Code) for vulnerabilities.
+- **Pre-Push Gate**: Git pre-push hook (`.githooks/pre-push`) blocks pushes if `npm run check`, `npm audit --omit=dev --audit-level=high`, or Snyk high/critical scans fail (bypassable only via `SKIP_SNYK=1` for explicit opt-out).
+- **Security Advisor Agent**: `.claude/agents/security-advisor.md` runs test suites, dependency audits, Snyk scans, and diff checklists before giving a final `PASS` or `BLOCK` verdict.
 
-The event bus is in-process: API and worker processes have separate subscribers and do not exchange events. Each subscriber validates its own event payload.
+## Error Format
 
-## Error format
+The API standardizes all errors into a predictable JSON payload:
 
 ```json
-{ "error": { "code": "VALIDATION_ERROR", "message": "Request validation failed", "details": [] } }
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Request validation failed",
+    "details": []
+  }
+}
 ```
 
-`details` is optional.
+Domain and application errors inherit from `AppError` and are mapped to HTTP status codes centrally in `src/platform/http/error-handler.ts`. Internal error details and database exception messages are never leaked to clients.

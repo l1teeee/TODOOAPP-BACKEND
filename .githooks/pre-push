@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+echo "pre-push: running check..."
+npm run check
+
+echo "pre-push: running npm audit..."
+npm audit --omit=dev --audit-level=high
+
+if [ "$SKIP_SNYK" = "1" ]; then
+  echo "pre-push: SKIP_SNYK=1, Snyk scans skipped by explicit opt-out"
+else
+  if ! command -v snyk >/dev/null 2>&1; then
+    echo "pre-push: snyk is not on PATH. Please install Snyk CLI or set SKIP_SNYK=1." >&2
+    exit 1
+  fi
+  echo "pre-push: running snyk test..."
+  snyk test --severity-threshold=high
+  echo "pre-push: running snyk code test..."
+  snyk code test --severity-threshold=high
+fi
+
+echo "pre-push: all gates passed"

@@ -57,3 +57,10 @@ Satellites own their association tables, with foreign keys to `activitiesTable` 
 - `USER_PROFILE_CREATED` is `identity.user_profile_created`, with payload `{ userId: string, email: string }`.
 - Modules own their tables in `adapters/persistence/schema.ts`; never edit `drizzle/` by hand; the brain runs `npm run db:generate` after merging.
 - The worker entry point is `src/worker.ts`. Run it as a separate Railway service with config file `/railway.worker.json`.
+
+# Pre-push gate and security advisor
+
+- The hook in `.githooks/pre-push` runs `check`, `npm audit` and Snyk (`SKIP_SNYK=1` only for an explicit, temporary opt-out).
+- `npm install` sets `core.hooksPath` through the `prepare` script.
+- Run the `security-advisor` agent before asking for a merge or a push.
+
