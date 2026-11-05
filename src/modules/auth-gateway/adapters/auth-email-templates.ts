@@ -34,7 +34,7 @@ export function signupCodeEmail(input: {
 
 export function accountExistsEmail(input: { to: string }): EmailMessage {
   const text =
-    'Someone tried to register with this email, but you already have a TODO App account. Log in or use "Forgot password" to reset your password.';
+    'Someone tried to register with this email, but you already have a TODO App account. Log in or use "Forgot password" to reset your password. If you did not finish creating your account, use "Forgot password" to set a new password, which also confirms your email.';
   return {
     to: input.to,
     subject: "You already have a TODO App account",

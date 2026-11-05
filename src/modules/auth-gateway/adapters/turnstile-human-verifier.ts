@@ -18,14 +18,14 @@ export function createTurnstileHumanVerifier(secret: string): HumanVerifier {
           }),
           signal: AbortSignal.timeout(5_000),
         });
-        if (!response.ok) {
-          throw captchaUnavailable();
+        if (response.ok) {
+          const json = responseSchema.parse(await response.json());
+          return json.success;
         }
-        const json = responseSchema.parse(await response.json());
-        return json.success;
       } catch {
         throw captchaUnavailable();
       }
+      throw captchaUnavailable();
     },
   };
 }

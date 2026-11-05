@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { z } from "zod";
 import type { HttpServer } from "../../../../platform/http/http-server.js";
 import type { createRegisterAccount } from "../../application/register-account.js";
@@ -5,6 +6,7 @@ import type { createRequestPasswordReset } from "../../application/request-passw
 
 const emailSchema = z.string().trim().toLowerCase().pipe(z.email().max(254));
 const turnstileTokenSchema = z.string().min(1).max(2048);
+const authRateLimit = { max: 5, timeWindow: 900_000 };
 const registerSchema = z.strictObject({
   email: emailSchema,
   password: z
@@ -12,8 +14,21 @@ const registerSchema = z.strictObject({
     .min(8)
     .max(72)
     .regex(/[a-zA-Z]/)
-    .regex(/[0-9]/),
-  fullName: z.string().trim().min(1).max(80),
+    .regex(/[0-9]/)
+    .refine(
+      (value) => Buffer.byteLength(value, "utf8") <= 72,
+      "Password must be at most 72 UTF-8 bytes",
+    ),
+  fullName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .regex(
+      /^[\p{L}\p{M} .'-]+$/u,
+      "Use only letters, marks, spaces, apostrophes, hyphens and periods",
+    )
+    .transform((value) => value.replace(/\s+/g, " ")),
   turnstileToken: turnstileTokenSchema,
 });
 const passwordResetSchema = z.strictObject({
@@ -31,7 +46,7 @@ export function registerAuthGatewayRoutes(
   server.post(
     "/auth/register",
     {
-      config: { rateLimit: { max: 5, timeWindow: 900_000 } },
+      config: { rateLimit: authRateLimit },
       schema: {
         tags: ["auth"],
         body: registerSchema,
@@ -47,7 +62,7 @@ export function registerAuthGatewayRoutes(
   server.post(
     "/auth/password-reset",
     {
-      config: { rateLimit: { max: 5, timeWindow: 900_000 } },
+      config: { rateLimit: authRateLimit },
       schema: {
         tags: ["auth"],
         body: passwordResetSchema,

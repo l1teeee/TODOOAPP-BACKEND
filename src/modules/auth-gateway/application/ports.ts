@@ -1,3 +1,9 @@
+export type BackgroundRunner = (task: () => Promise<void>) => void;
+
+export interface EmailCooldown {
+  tryAcquire(email: string): Promise<boolean>;
+}
+
 export interface HumanVerifier {
   verify(input: { token: string; remoteIp: string }): Promise<boolean>;
 }

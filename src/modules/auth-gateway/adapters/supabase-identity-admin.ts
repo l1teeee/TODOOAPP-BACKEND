@@ -1,12 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
-import type { ModuleContext } from "../../../platform/modules/app-module.js";
 import type { IdentityAdmin } from "../application/ports.js";
 import { identityUnavailable } from "../domain/auth-gateway-errors.js";
 
 export function createSupabaseIdentityAdmin(options: {
   url: string;
   secretKey: string;
-  logger: ModuleContext["logger"];
 }): IdentityAdmin {
   const client = createClient(options.url, options.secretKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -28,8 +26,7 @@ export function createSupabaseIdentityAdmin(options: {
         ) {
           return { status: "already_registered" };
         }
-        options.logger.error({ status: error.status, code: error.code });
-        throw identityUnavailable();
+        throw identityUnavailable(error);
       }
       return { status: "created", code: data.properties.email_otp };
     },
@@ -39,8 +36,7 @@ export function createSupabaseIdentityAdmin(options: {
         if (error.code === "user_not_found" || error.status === 404) {
           return { status: "unknown_email" };
         }
-        options.logger.error({ status: error.status, code: error.code });
-        throw identityUnavailable();
+        throw identityUnavailable(error);
       }
       return { status: "created", code: data.properties.email_otp };
     },

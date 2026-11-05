@@ -12,10 +12,12 @@ export function captchaUnavailable(): AppError {
   );
 }
 
-export function identityUnavailable(): AppError {
-  return new AppError(
+export function identityUnavailable(cause?: unknown): AppError {
+  const error = new AppError(
     "unavailable",
     "IDENTITY_UNAVAILABLE",
     "Account service is unavailable. Try again.",
   );
+  error.cause = cause;
+  return error;
 }

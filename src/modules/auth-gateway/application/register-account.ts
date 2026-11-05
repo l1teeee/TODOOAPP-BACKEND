@@ -1,11 +1,18 @@
 import { captchaFailed } from "../domain/auth-gateway-errors.js";
-import type { AuthMailer, HumanVerifier, IdentityAdmin } from "./ports.js";
+import type {
+  AuthMailer,
+  BackgroundRunner,
+  EmailCooldown,
+  HumanVerifier,
+  IdentityAdmin,
+} from "./ports.js";
 
 export function createRegisterAccount(deps: {
   humanVerifier: HumanVerifier;
   identityAdmin: IdentityAdmin;
   mailer: AuthMailer;
-  runInBackground: (task: () => Promise<void>) => void;
+  emailCooldown: EmailCooldown;
+  runInBackground: BackgroundRunner;
 }) {
   return async (input: {
     email: string;
@@ -22,6 +29,10 @@ export function createRegisterAccount(deps: {
       throw captchaFailed();
     }
     deps.runInBackground(async () => {
+      const acquired = await deps.emailCooldown.tryAcquire(input.email);
+      if (!acquired) {
+        return;
+      }
       const result = await deps.identityAdmin.createSignupCode({
         email: input.email,
         password: input.password,
