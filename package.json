@@ -22,7 +22,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run build",
     "openapi:export": "node --env-file-if-exists=.env --import tsx src/scripts/export-openapi.ts",
-    "prepare": "node scripts/install-git-hooks.mjs"
+    "prepare": "node scripts/install-git-hooks.mjs",
+    "load:users": "node --env-file-if-exists=.env --env-file-if-exists=load-tests/.env --import tsx src/scripts/load-test-users.ts",
+    "load": "node --env-file-if-exists=load-tests/.env --import tsx src/scripts/run-load-test.ts"
   },
   "dependencies": {
     "@fastify/cors": "11.4.1",

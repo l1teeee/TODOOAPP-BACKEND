@@ -49,6 +49,12 @@ Satellites own their association tables, with foreign keys to `activitiesTable` 
 - `npm run check` (lint, typecheck, build)
 - `npm run openapi:export` (writes openapi.json, the contract the frontend repo generates its types from)
 
+# Load tests
+
+- Every new or changed HTTP endpoint adds or updates its k6 scenario in `load-tests/scenarios/<module>.js` (see `load-tests/README.md`, "Adding a module").
+- Modules that call paid or rate-limited third parties are excluded and listed in `load-tests/scenarios/index.js`.
+- Never run load tests against production.
+
 # Security and quality
 
 - Dependabot (`.github/dependabot.yml`) opens weekly npm update PRs and security fix PRs. Merge one only after the review below and `npm run check` pass.
