@@ -135,6 +135,10 @@ Registration trims full names to 1-80 characters, permits only Unicode letters a
 
 Required Supabase settings: disable **Allow new users to sign up** so public signup cannot bypass Turnstile (admin-generated sign-ups still work), set email OTP length to **6**, OTP expiry to **3600 seconds**, and password minimum length to **8**. The browser handles code verification and password updates directly against Supabase; the API uses admin-generated codes so Supabase does not send these emails.
 
+## AI assistant
+
+Set `DEEPINFRA_API_KEY` on Railway to enable the AI assistant module. `DEEPINFRA_MODEL` selects the model and defaults to `deepseek-ai/DeepSeek-V4-Flash-0731`. Authenticated clients can send an activity title and optional description to `POST /v1/ai/subtask-suggestions` to receive up to five suggested subtask titles. The activity text is sent to DeepInfra to generate the suggestions.
+
 ## Deploy on Railway
 
 Create a new service from [TODOOAPP-BACKEND](https://github.com/l1teeee/TODOOAPP-BACKEND). Railway uses the Railpack builder configured in `railway.json`. Set the environment variables, including `TRUST_PROXY_HOPS=1`, generate a public domain, and use `/health` as the healthcheck.
