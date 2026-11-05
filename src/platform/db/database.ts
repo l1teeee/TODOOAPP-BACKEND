@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { NodePgDatabase, NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
+import type { PgDatabase } from "drizzle-orm/pg-core";
 import { Pool } from "pg";
 import type { FastifyBaseLogger } from "fastify";
 import type { AppConfig } from "../config/env.js";
@@ -10,7 +11,7 @@ export interface Database {
   close(): Promise<void>;
 }
 
-export type DbExecutor = NodePgDatabase;
+export type DbExecutor = PgDatabase<NodePgQueryResultHKT>;
 
 export function createDatabase(config: AppConfig["database"], logger: FastifyBaseLogger): Database {
   const pool = new Pool({

@@ -103,6 +103,22 @@ Modules parse their own environment variables from `ModuleContext.env`.
 
 Send the Supabase access token as `Authorization: Bearer <token>` to `GET /v1/me` or `PATCH /v1/me`. The API verifies the token against Supabase JWKS and ensures a local profile. PATCH accepts `displayName` (trimmed, 1-80 characters, or null), `timezone` (from `Intl.supportedValuesOf("timeZone")`) and `emailNotifications` (boolean), with at least one field and no extra keys.
 
+All activities endpoints require the same Supabase bearer token and scope data to the authenticated user.
+
+| Method | Endpoint                     | Response                    | Purpose                                                                       |
+| ------ | ---------------------------- | --------------------------- | ----------------------------------------------------------------------------- |
+| GET    | `/v1/activities`             | 200 `{ items }`             | List active habits, reminders and tasks.                                      |
+| GET    | `/v1/activities/completed`   | 200 `{ items, nextCursor }` | Page through completed activities, newest first.                              |
+| GET    | `/v1/activities/trash`       | 200 `{ items, nextCursor }` | Page through trashed activities, newest first.                                |
+| GET    | `/v1/activities/:id`         | 200 activity                | Read an owned activity, including one in the trash.                           |
+| POST   | `/v1/activities`             | 201 activity                | Create an activity with required `kind` and `title`.                          |
+| PATCH  | `/v1/activities/:id`         | 200 activity                | Update fields; set `status: "completed"` to complete it. `kind` is immutable. |
+| POST   | `/v1/activities/:id/trash`   | 200 activity                | Move an activity to the trash.                                                |
+| POST   | `/v1/activities/:id/restore` | 200 activity                | Restore an activity from the trash.                                           |
+| DELETE | `/v1/activities/:id`         | 204                         | Permanently delete a trashed activity; an active activity returns 409.        |
+
+The active list accepts `from` and `to` together (real `YYYY-MM-DD` dates, inclusive, at most 62 days), `unscheduled=true` (undated activities excluding habits), `kind`, `status`, `q` (literal text search), and `limit` (1-500, default 300). Date ranges also include habits. Completed and trash lists accept an opaque `cursor` and `limit` (1-100, default 50); pass `nextCursor` for the next page. Times use `HH:MM`, timestamps use ISO strings, and nullable fields accept null. Habits cannot have a scheduled date or location; reminders require a scheduled date and start time; an end time must follow the start time. Satellite response fields, filters and write fields are registered before routes and appear in OpenAPI.
+
 ## Deploy on Railway
 
 Create a new service from [TODOOAPP-BACKEND](https://github.com/l1teeee/TODOOAPP-BACKEND). Railway uses the Railpack builder configured in `railway.json`. Set the environment variables, including `TRUST_PROXY_HOPS=1`, generate a public domain, and use `/health` as the healthcheck.

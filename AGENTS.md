@@ -17,6 +17,16 @@ A module never imports another module. The only exception will be the core `acti
 
 Delete its folder, remove its entry in `src/modules/index.ts`, and add a migration that drops its tables. Nothing else may break.
 
+# Extension points
+
+Satellites import only `src/modules/activities/public.ts`. The composition root creates activities first, then passes `activities.extensions` and `activities.access` to satellites. Register extensions before routes are registered; registration is frozen when activity routes build their schemas. Field and parameter names must be unique across extensions and must not match core fields or query parameters.
+
+- Add a response field with `addView({ field, schema, fallback, load })`. `load({ userId, activityIds })` must use one batched query for all activity ids and return a map keyed by activity id. The presenter calls each loader once per response, in parallel, and supplies `fallback` for missing entries.
+- Add a list filter with `addFilter({ param, schema, condition })`. `condition({ userId, value })` returns a scoped SQL condition, such as a correlated EXISTS against the satellite's association table.
+- Add a create/patch field with `addWrite({ field, schema, apply })`. `apply({ executor, userId, activityId, value })` must use the supplied transaction executor; throwing rolls back both the core write and satellite associations. Use distinct names for related view, filter and write extensions.
+
+Satellites own their association tables, with foreign keys to `activitiesTable` using `onDelete: "cascade"`. Scope association queries by user id. Use `activities.access.findOwned` to read an owned, non-trashed activity summary. Removing a satellite requires deleting its folder and its composition-root lines, then generating the migration to drop its tables; activities needs no edits.
+
 # Rules
 
 - Validate input only in `adapters/http` with zod.
