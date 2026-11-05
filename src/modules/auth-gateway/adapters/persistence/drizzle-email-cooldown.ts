@@ -6,8 +6,10 @@ import { authEmailCooldowns } from "./schema.js";
 
 export function createDrizzleEmailCooldown(db: DbExecutor): EmailCooldown {
   return {
-    async tryAcquire(email) {
-      const emailHash = createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
+    async tryAcquire(purpose, email) {
+      const emailHash = createHash("sha256")
+        .update(`${purpose}:${email.trim().toLowerCase()}`)
+        .digest("hex");
       const [acquired] = await db
         .insert(authEmailCooldowns)
         .values({ emailHash, lastSentAt: sql`now()` })

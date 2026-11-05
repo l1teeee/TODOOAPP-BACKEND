@@ -29,7 +29,7 @@ export function createRegisterAccount(deps: {
       throw captchaFailed();
     }
     deps.runInBackground(async () => {
-      const acquired = await deps.emailCooldown.tryAcquire(input.email);
+      const acquired = await deps.emailCooldown.tryAcquire("signup", input.email);
       if (!acquired) {
         return;
       }

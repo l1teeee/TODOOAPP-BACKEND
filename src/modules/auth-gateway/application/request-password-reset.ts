@@ -27,7 +27,7 @@ export function createRequestPasswordReset(deps: {
       throw captchaFailed();
     }
     deps.runInBackground(async () => {
-      const acquired = await deps.emailCooldown.tryAcquire(input.email);
+      const acquired = await deps.emailCooldown.tryAcquire("recovery", input.email);
       if (!acquired) {
         return;
       }

@@ -1,7 +1,11 @@
 export type BackgroundRunner = (task: () => Promise<void>) => void;
 
 export interface EmailCooldown {
-  tryAcquire(email: string): Promise<boolean>;
+  tryAcquire(purpose: "signup" | "recovery" | "login", email: string): Promise<boolean>;
+}
+
+export interface ProfileDirectory {
+  findIdByEmail(email: string): Promise<string | null>;
 }
 
 export interface HumanVerifier {
@@ -22,7 +26,7 @@ export interface IdentityAdmin {
     fullName: string;
   }): Promise<SignupCodeResult>;
   createRecoveryCode(email: string): Promise<RecoveryCodeResult>;
-  createLoginCode(email: string): Promise<LoginCodeResult>;
+  createLoginCode(input: { userId: string; email: string }): Promise<LoginCodeResult>;
 }
 
 export interface AuthMailer {

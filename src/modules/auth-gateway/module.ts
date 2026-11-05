@@ -4,6 +4,7 @@ import type { AppModule, ModuleContext, ModuleFactory } from "../../platform/mod
 import { createAuthMailer } from "./adapters/auth-mailer.js";
 import { registerAuthGatewayRoutes } from "./adapters/http/auth-gateway-routes.js";
 import { createDrizzleEmailCooldown } from "./adapters/persistence/drizzle-email-cooldown.js";
+import { createDrizzleProfileDirectory } from "./adapters/persistence/drizzle-profile-directory.js";
 import { createSupabaseIdentityAdmin } from "./adapters/supabase-identity-admin.js";
 import { createTurnstileHumanVerifier } from "./adapters/turnstile-human-verifier.js";
 import type { BackgroundRunner } from "./application/ports.js";
@@ -18,10 +19,10 @@ export const createAuthGatewayModule: ModuleFactory = (context: ModuleContext): 
   const identityAdmin = createSupabaseIdentityAdmin({
     url: context.config.supabase.url,
     secretKey: config.SUPABASE_SECRET_KEY,
-    db: context.db,
   });
   const mailer = createAuthMailer(context.email);
   const emailCooldown = createDrizzleEmailCooldown(context.db);
+  const profileDirectory = createDrizzleProfileDirectory(context.db);
   const pending = new Set<Promise<void>>();
 
   function makeBackgroundRunner(
@@ -73,6 +74,7 @@ export const createAuthGatewayModule: ModuleFactory = (context: ModuleContext): 
   });
   const requestLoginCode = createRequestLoginCode({
     identityAdmin,
+    profileDirectory,
     mailer,
     emailCooldown,
     runInBackground: makeBackgroundRunner("auth_gateway.login_code_failed"),
