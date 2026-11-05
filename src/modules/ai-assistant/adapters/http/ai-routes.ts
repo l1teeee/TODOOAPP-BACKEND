@@ -13,7 +13,14 @@ export function registerAiRoutes(
     "/ai/subtask-suggestions",
     {
       onRequest: [context.requireUser],
-      config: { rateLimit: { max: 10, timeWindow: 60_000 } },
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: 60_000,
+          hook: "preHandler",
+          keyGenerator: (request) => request.user?.id ?? request.ip,
+        },
+      },
       schema: {
         security: [{ bearerAuth: [] }],
         tags: ["ai"],
