@@ -1,4 +1,4 @@
-import { AppError } from "../../../platform/errors/app-error.js";
+export const SUBTASK_TITLE_MAX = 120;
 
 export interface Subtask {
   id: string;
@@ -6,12 +6,4 @@ export interface Subtask {
   title: string;
   isDone: boolean;
   position: number;
-}
-
-export function subtaskTitle(value: string): string {
-  const title = value.trim();
-  if (title.length < 1 || title.length > 120) {
-    throw new AppError("invalid", "SUBTASK_INVALID", "Subtask title must be 1-120 characters");
-  }
-  return title;
 }

@@ -1,7 +1,6 @@
 import { AppError } from "../../../platform/errors/app-error.js";
 import type { EventBus } from "../../../platform/events/event-bus.js";
 import type { ActivityAccess } from "../../activities/public.js";
-import { subtaskTitle } from "../domain/subtask.js";
 import { subtaskNotFound } from "../domain/subtask-errors.js";
 import type { SubtaskPatch, SubtaskRepository } from "./ports.js";
 
@@ -22,12 +21,11 @@ export function createSubtaskUseCases(deps: {
 
   async function createMany(userId: string, activityId: string, titles: readonly string[]) {
     const activity = await findActivity(userId, activityId);
-    const subtaskTitles = titles.map(subtaskTitle);
-    const items = await repository.createMany(userId, activityId, subtaskTitles);
+    const items = await repository.createMany(userId, activityId, titles);
     await events.publish({
       type: "subtasks.created",
       occurredAt: new Date().toISOString(),
-      payload: { userId, activityId, activityTitle: activity.title, subtaskTitles },
+      payload: { userId, activityId, activityTitle: activity.title, subtaskTitles: titles },
     });
     return items;
   }
@@ -46,11 +44,7 @@ export function createSubtaskUseCases(deps: {
     },
     createMany,
     async update(userId: string, id: string, patch: SubtaskPatch) {
-      const fields = { ...patch };
-      if (fields.title !== undefined) {
-        fields.title = subtaskTitle(fields.title);
-      }
-      const item = await repository.update(userId, id, fields);
+      const item = await repository.update(userId, id, patch);
       if (!item) {
         throw subtaskNotFound();
       }
@@ -63,3 +57,5 @@ export function createSubtaskUseCases(deps: {
     },
   };
 }
+
+export type SubtaskUseCases = ReturnType<typeof createSubtaskUseCases>;

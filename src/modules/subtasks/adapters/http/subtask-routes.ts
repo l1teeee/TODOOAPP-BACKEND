@@ -2,9 +2,10 @@ import { z } from "zod";
 import type { HttpServer } from "../../../../platform/http/http-server.js";
 import { currentUser } from "../../../../platform/identity/adapters/http/require-user.js";
 import type { ModuleContext } from "../../../../platform/modules/app-module.js";
-import type { createSubtaskUseCases } from "../../application/subtask-use-cases.js";
+import type { SubtaskUseCases } from "../../application/subtask-use-cases.js";
+import { SUBTASK_TITLE_MAX } from "../../domain/subtask.js";
 
-const titleSchema = z.string().trim().min(1).max(120);
+const titleSchema = z.string().trim().min(1).max(SUBTASK_TITLE_MAX);
 const activityParams = z.strictObject({ activityId: z.uuid() });
 const subtaskParams = z.strictObject({ id: z.uuid() });
 const subtaskSchema = z.object({
@@ -32,7 +33,7 @@ const patchSchema = z
 export function registerSubtaskRoutes(
   server: HttpServer,
   context: ModuleContext,
-  useCases: ReturnType<typeof createSubtaskUseCases>,
+  useCases: SubtaskUseCases,
 ): void {
   const authenticated = { onRequest: [context.requireUser] };
   const metadata = { security: [{ bearerAuth: [] }], tags: ["subtasks"] };
