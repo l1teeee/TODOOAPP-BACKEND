@@ -264,16 +264,18 @@ The production architecture consists of three interconnected Railway services:
 
 1. **Postgres Service**: Managed Railway PostgreSQL database. Use the internal network URL (`DATABASE_URL`) with `.railway.internal` host to avoid public network hops and disable SSL overhead (`DATABASE_SSL=false`).
 2. **API Service**:
-   - Configured via `railway.json`.
+   - Service settings (set in Railway, not in the repo): builder Railpack, build command `npm run build`.
    - Pre-deploy command runs migrations: `npm run db:migrate`.
    - Start command: `npm run start`.
    - Healthcheck path: `/health` with 60s timeout.
    - Set `TRUST_PROXY_HOPS=1` to accurately detect client IP behind Railway's reverse proxy.
    - Set `CORS_ORIGINS` to your production frontend domain (e.g., `https://your-app.vercel.app`).
 3. **Worker Service**:
-   - Long-running service configured via `railway.worker.json`.
+   - Long-running service with service settings: builder Railpack, build command `npm run build`, no healthcheck, restart on failure.
    - Start command: `npm run start:worker`.
    - Shares the same environment variables and database as the API service. Runs background reminder scans, outbox draining, and cleanup.
+
+Railway deprecated config as code (`railway.json`), so build and deploy settings live in each service's settings. Variables are set per service; `DATABASE_URL` references `${{Postgres.DATABASE_URL}}` on the private network.
 
 ## Security
 

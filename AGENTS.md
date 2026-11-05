@@ -71,7 +71,7 @@ Satellites own their association tables, with foreign keys to `activitiesTable` 
 - Integration events carry `{ type, occurredAt, payload }`. Subscribers validate their own payload with zod; publishers and subscribers never share payload types. In-process handlers run in order; failures are logged without rejecting publication because the publisher's work is already committed.
 - `USER_PROFILE_CREATED` is `identity.user_profile_created`, with payload `{ userId: string, email: string }`.
 - Modules own their tables in `adapters/persistence/schema.ts`; never edit `drizzle/` by hand; the brain runs `npm run db:generate` after merging.
-- The worker entry point is `src/worker.ts`. Run it as a separate Railway service with config file `/railway.worker.json`.
+- The worker entry point is `src/worker.ts`. It runs as a separate Railway service whose settings (start command `npm run start:worker`) live in Railway, not in the repo.
 
 # Pre-push gate and security advisor
 
