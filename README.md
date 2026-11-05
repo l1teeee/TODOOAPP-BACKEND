@@ -4,6 +4,27 @@
 
 A long-running Fastify 5 API deployed on Railway. The frontend application is located in the [TODOAPP-FRONT](https://github.com/l1teeee/TODOAPP-FRONT) repository.
 
+## Production
+
+- API: https://api-production-d3f3.up.railway.app (`/health`, `/health/ready`)
+- App: https://todoapp-front-inky.vercel.app (frontend repository: https://github.com/l1teeee/TODOAPP-FRONT)
+- Railway project `todo-app` with three services: Postgres, `api` and `worker`. Both app services deploy from this repository's `main` branch on every push; their build and deploy settings live in Railway (see Deploy on Railway).
+- Production variables: `NODE_ENV=production`, `TRUST_PROXY_HOPS=1`, `DATABASE_URL=${{Postgres.DATABASE_URL}}` on the private network with `DATABASE_SSL=false`, `CORS_ORIGINS` and `APP_URL` set to the Vercel domains, a real `TURNSTILE_SECRET_KEY` (Cloudflare test secrets are rejected in production), `EMAIL_PROVIDER=brevo`, `SENTRY_ENVIRONMENT=production` and the `OTEL_*` exporter for Grafana Cloud with `parentbased_traceidratio` sampling at 0.2.
+- Supabase: public sign-ups are disabled (the API creates users through the admin API) and the Site URL and redirect URLs point to the Vercel domain.
+- Postgres runs with `synchronous_commit = off` (database setting). On Railway's volume each COMMIT took 0.4-1.1 s; with the setting off, commits return before the WAL flush. Trade-off: a Postgres crash can lose the last ~0.6 s of acknowledged writes, without corruption. Revert with `ALTER DATABASE railway RESET synchronous_commit;`.
+- Observability: errors in Sentry (projects `todo-app-backend` and `todo-app-frontend`, environment `production`); traces, metrics and logs in Grafana Cloud (filter `deployment_environment_name=production`); load-test runs in Grafana Cloud k6.
+
+Production results (2026-11-05, measured from El Salvador, about 190 ms of network round trip per request):
+
+| Check                                           | Result                                                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Unit tests (Jest)                               | 23 suites, 123 tests passing                                                               |
+| End-to-end (Playwright, frontend repo)          | 10 passed, 5 skipped by design                                                             |
+| k6 smoke                                        | 100% checks, 0% errors, p95 297 ms                                                         |
+| Server-side database time                       | reads 3-4 ms; API event loop about 10% busy under load                                     |
+| Write latency before `synchronous_commit = off` | `PATCH /v1/me` p90 813 ms, max 1,399 ms; `POST /v1/activities` p95 1,301 ms under load     |
+| Write latency after                             | `PATCH /v1/me` p90 208 ms; `POST /v1/activities` median 215 ms, max 255 ms (network floor) |
+
 ## Architecture
 
 This project is built as a modular hexagonal monolith. Shared infrastructure lives in the platform layer (`src/platform`), while business capabilities reside in self-contained feature modules (`src/modules`).
