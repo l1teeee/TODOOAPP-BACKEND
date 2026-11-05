@@ -105,17 +105,22 @@ Send the Supabase access token as `Authorization: Bearer <token>` to `GET /v1/me
 
 All activities endpoints require the same Supabase bearer token and scope data to the authenticated user.
 
-| Method | Endpoint                     | Response                    | Purpose                                                                       |
-| ------ | ---------------------------- | --------------------------- | ----------------------------------------------------------------------------- |
-| GET    | `/v1/activities`             | 200 `{ items }`             | List active habits, reminders and tasks.                                      |
-| GET    | `/v1/activities/completed`   | 200 `{ items, nextCursor }` | Page through completed activities, newest first.                              |
-| GET    | `/v1/activities/trash`       | 200 `{ items, nextCursor }` | Page through trashed activities, newest first.                                |
-| GET    | `/v1/activities/:id`         | 200 activity                | Read an owned activity, including one in the trash.                           |
-| POST   | `/v1/activities`             | 201 activity                | Create an activity with required `kind` and `title`.                          |
-| PATCH  | `/v1/activities/:id`         | 200 activity                | Update fields; set `status: "completed"` to complete it. `kind` is immutable. |
-| POST   | `/v1/activities/:id/trash`   | 200 activity                | Move an activity to the trash.                                                |
-| POST   | `/v1/activities/:id/restore` | 200 activity                | Restore an activity from the trash.                                           |
-| DELETE | `/v1/activities/:id`         | 204                         | Permanently delete a trashed activity; an active activity returns 409.        |
+| Method | Endpoint                                    | Response                    | Purpose                                                                       |
+| ------ | ------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------- |
+| GET    | `/v1/activities`                            | 200 `{ items }`             | List active habits, reminders and tasks.                                      |
+| GET    | `/v1/activities/completed`                  | 200 `{ items, nextCursor }` | Page through completed activities, newest first.                              |
+| GET    | `/v1/activities/trash`                      | 200 `{ items, nextCursor }` | Page through trashed activities, newest first.                                |
+| GET    | `/v1/activities/:id`                        | 200 activity                | Read an owned activity, including one in the trash.                           |
+| POST   | `/v1/activities`                            | 201 activity                | Create an activity with required `kind` and `title`.                          |
+| PATCH  | `/v1/activities/:id`                        | 200 activity                | Update fields; set `status: "completed"` to complete it. `kind` is immutable. |
+| POST   | `/v1/activities/:id/trash`                  | 200 activity                | Move an activity to the trash.                                                |
+| POST   | `/v1/activities/:id/restore`                | 200 activity                | Restore an activity from the trash.                                           |
+| DELETE | `/v1/activities/:id`                        | 204                         | Permanently delete a trashed activity; an active activity returns 409.        |
+| GET    | `/v1/activities/:activityId/subtasks`       | 200 `{ items }`             | List an owned, active activity's checklist by position, then creation time.   |
+| POST   | `/v1/activities/:activityId/subtasks`       | 201 subtask                 | Append a checklist item with `{ title }`.                                     |
+| POST   | `/v1/activities/:activityId/subtasks/batch` | 201 `{ items }`             | Append 1-10 unique titles with `{ titles }`, including AI suggestions.        |
+| PATCH  | `/v1/subtasks/:id`                          | 200 subtask                 | Update `title`, `isDone`, or both; at least one field is required.            |
+| DELETE | `/v1/subtasks/:id`                          | 204                         | Delete an owned checklist item.                                               |
 
 The active list accepts `from` and `to` together (real `YYYY-MM-DD` dates, inclusive, at most 62 days), `unscheduled=true` (undated activities excluding habits), `kind`, `status`, `q` (literal text search), and `limit` (1-500, default 300). Date ranges also include habits. Completed and trash lists accept an opaque `cursor` and `limit` (1-100, default 50); pass `nextCursor` for the next page. Times use `HH:MM`, timestamps use ISO strings, and nullable fields accept null. Habits cannot have a scheduled date or location; reminders require a scheduled date and start time; an end time must follow the start time. Satellite response fields, filters and write fields are registered before routes and appear in OpenAPI.
 
@@ -150,6 +155,9 @@ Names are trimmed, lowercased and must match `^[a-z0-9][a-z0-9-]{0,29}$`, with c
 The tags factory registers activity extensions before routes: the response field `tagIds` is an array of UUIDs (empty when untagged), the active activity list accepts a `tagId` UUID filter, and activity create/patch accepts `tagIds` with at most 10 unique owned tag UUIDs. Writing `tagIds` replaces the set; an empty array clears it. Ownership is checked in one count query, replacements use the activity transaction, and response values load in one batched query.
 
 New users have no lists or tags. The frontend can optionally load sample data through these same endpoints. Register `createListsModule(context, activities)` and `createTagsModule(context, activities)` in the composition root after creating activities and before registering routes; generate their migrations at integration. The modules import activities only through `public.ts` and never import each other. Remove either module's folder and composition-root lines, then generate a migration dropping its tables, to keep activities and the other module working. Extension names are unique within their response, query or body category; the same name can appear across categories. Registration freezes when activity routes are built.
+Subtasks require the same bearer token. A subtask is `{ id, activityId, title, isDone, position }`; titles are trimmed to 1-120 characters and batch titles must be unique after trimming. The `subtasks` module adds `subtaskProgress: { done, total }` to activity responses, with zero counts for an empty checklist. Register the module and generate its migration at integration.
+
+After a single or batch creation commits, the module publishes one `subtasks.created` event with an ISO `occurredAt` timestamp and payload `{ userId, activityId, activityTitle, subtaskTitles }`. Subscribers such as notifications validate this payload independently and do not import the subtasks module.
 
 ## Auth flows
 
