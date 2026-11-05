@@ -3,6 +3,7 @@ import { loadConfig } from "./platform/config/env.js";
 import { createPlatform } from "./platform/context/create-platform.js";
 import { runJobs } from "./platform/jobs/run-jobs.js";
 import { createLogger } from "./platform/logging/create-logger.js";
+import { shutdownTelemetry } from "./platform/observability/telemetry.js";
 
 const config = loadConfig(process.env);
 const logger = createLogger(config);
@@ -24,6 +25,7 @@ async function shutdown(signal: string): Promise<void> {
   try {
     await runner.stop();
     await database.close();
+    await shutdownTelemetry();
     process.exit(0);
   } catch (error) {
     logger.error({ err: error }, "Worker shutdown failed");

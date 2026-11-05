@@ -1,6 +1,23 @@
 import { setTimeout } from "node:timers/promises";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import type { FastifyBaseLogger } from "fastify";
 import type { BackgroundJob } from "./background-job.js";
+
+async function runTraced(job: BackgroundJob): Promise<void> {
+  await trace
+    .getTracer("todo-app.jobs")
+    .startActiveSpan("job.run", { attributes: { "job.name": job.name } }, async (span) => {
+      try {
+        await job.run();
+      } catch (error) {
+        span.recordException(error instanceof Error ? error : String(error));
+        span.setStatus({ code: SpanStatusCode.ERROR });
+        throw error;
+      } finally {
+        span.end();
+      }
+    });
+}
 
 export function runJobs(
   jobs: readonly BackgroundJob[],
@@ -11,7 +28,7 @@ export function runJobs(
   async function runLoop(job: BackgroundJob): Promise<void> {
     while (!controller.signal.aborted) {
       try {
-        await job.run();
+        await runTraced(job);
       } catch (error) {
         logger.error({ err: error, job: job.name }, "Background job failed");
       }

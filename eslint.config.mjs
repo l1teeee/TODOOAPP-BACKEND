@@ -16,4 +16,11 @@ export default defineConfig(
     },
   },
   { files: ["**/*.mjs"], extends: [tseslint.configs.disableTypeChecked] },
+  {
+    files: ["load-tests/**/*.js"],
+    extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: {
+      globals: { __ENV: "readonly", __VU: "readonly", __ITER: "readonly", open: "readonly" },
+    },
+  },
 );

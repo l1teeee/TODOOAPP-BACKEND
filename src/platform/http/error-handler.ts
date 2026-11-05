@@ -49,7 +49,7 @@ export function registerErrorHandling(server: HttpServer): void {
         .send(errorBody("VALIDATION_ERROR", "Request validation failed", details));
     }
     if (isResponseSerializationError(error)) {
-      request.log.error(error);
+      request.log.error({ err: error }, "Request failed");
       return reply.status(500).send(errorBody("INTERNAL_ERROR", "Internal server error"));
     }
     if (error instanceof AppError) {
@@ -65,7 +65,7 @@ export function registerErrorHandling(server: HttpServer): void {
           ),
         );
     }
-    request.log.error(error);
+    request.log.error({ err: error }, "Request failed");
     return reply.status(500).send(errorBody("INTERNAL_ERROR", "Internal server error"));
   });
   server.setNotFoundHandler((_request, reply) =>

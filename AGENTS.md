@@ -32,9 +32,17 @@ Satellites own their association tables, with foreign keys to `activitiesTable` 
 - Validate input only in `adapters/http` with zod.
 - Scope every query by the authenticated user id.
 - No N+1 queries; batch by ids.
+- Reads that run on most requests use Drizzle prepared statements built once in the repository factory (`sql.placeholder`, `= any(...::uuid[])` for id lists, unique statement names); rare filter combinations keep the dynamic builder; never prepare queries that run inside a transaction. Named prepared statements need a direct or session-mode Postgres connection (Railway private network is fine); never point `DATABASE_URL` at a transaction-mode pooler such as PgBouncer or the Supabase pooler on port 6543.
 - Domain and application code never import fastify, drizzle, pg or SDKs.
 - Errors are `AppError` with a kind, mapped to HTTP only in `src/platform/http/error-handler.ts`.
 - Use ESM with `.js` import suffixes.
+
+# Observability
+
+- Only `src/platform/observability` imports `@sentry/*` or OpenTelemetry SDK packages; modules log through `context.logger` and may add spans only with `@opentelemetry/api`.
+- Every `error` or `fatal` log becomes a Sentry issue, so use `error` only for failures someone must act on, `warn` for expected or handled problems, and pass errors as `err`.
+- Never put tokens, passwords, email contents or request bodies in logs or span attributes. Query parameters never appear in logs or Sentry; the logger and Sentry strip Drizzle `params:` lines.
+- Parse new observability settings in `observability-config.ts`.
 
 # Commands
 
@@ -42,6 +50,12 @@ Satellites own their association tables, with foreign keys to `activitiesTable` 
 - `npm run check` (lint, typecheck, build)
 - `npm test` (Jest unit tests; `npm run test:agent` runs them in band)
 - `npm run openapi:export` (writes openapi.json, the contract the frontend repo generates its types from)
+
+# Load tests
+
+- Every new or changed HTTP endpoint adds or updates its k6 scenario in `load-tests/scenarios/<module>.js` (see `load-tests/README.md`, "Adding a module").
+- Modules that call paid or rate-limited third parties are excluded and listed in `load-tests/scenarios/index.js`.
+- Never run load tests against production.
 
 # Security and quality
 

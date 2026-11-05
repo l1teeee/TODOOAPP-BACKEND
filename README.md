@@ -250,6 +250,14 @@ The AI assistant module provides intelligent activity breakdowns and daily summa
 - **Model selection**: Configured via `DEEPINFRA_MODEL` (defaults to `deepseek-ai/DeepSeek-V4-Flash-0731`).
 - **Privacy and security**: AI requests are bounded in size (input strings truncated to schema limits). Model responses are treated as untrusted plain text—never evaluated as code or interpolated into SQL. The module is disabled automatically when `DEEPINFRA_API_KEY` is not set.
 
+## Observability
+
+Sentry project `todo-app-backend` in org `numen-ne` receives crashes and every error or fatal log, tagged with `service` (`todo-api` or `todo-worker`) and the user id, without bodies, cookies, IPs or auth headers. Grafana Cloud receives traces (HTTP, fetch, Postgres and jobs), metrics (`http.server.request.duration` by route, Node runtime and Postgres pool), and logs with `trace_id`.
+
+Set `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_TRACES_SAMPLER` and `OTEL_TRACES_SAMPLER_ARG` as described in `.env.example` on both Railway services. Never set `OTEL_SERVICE_NAME`; the process sets `service.name`.
+
+`npm run dev` has no telemetry. Use `npm run build` then `npm run start:local` to test locally. During load tests use `OTEL_TRACES_SAMPLER_ARG=0.1` and an empty `SENTRY_DSN`.
+
 ## Deploy on Railway
 
 The production architecture consists of three interconnected Railway services:

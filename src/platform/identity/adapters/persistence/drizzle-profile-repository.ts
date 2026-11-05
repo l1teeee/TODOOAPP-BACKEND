@@ -4,6 +4,13 @@ import type { ProfileRepository } from "../../application/ports.js";
 import { profiles } from "./schema.js";
 
 export function createDrizzleProfileRepository(db: DbExecutor): ProfileRepository {
+  // Both composition-root factory calls use the same statement name with identical SQL.
+  const findById = db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.id, sql.placeholder("id")))
+    .prepare("profiles_find_by_id");
+
   return {
     async ensure(user) {
       const [result] = await db
@@ -18,7 +25,7 @@ export function createDrizzleProfileRepository(db: DbExecutor): ProfileRepositor
       return { created: result?.inserted === true };
     },
     async findById(id) {
-      const [profile] = await db.select().from(profiles).where(eq(profiles.id, id));
+      const [profile] = await findById.execute({ id });
       return profile ?? null;
     },
     async update(id, patch) {
