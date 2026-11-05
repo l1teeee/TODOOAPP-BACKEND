@@ -13,7 +13,7 @@ export function createRequestLoginCode(deps: {
   emailCooldown: EmailCooldown;
   runInBackground: BackgroundRunner;
 }) {
-  return async (input: { email: string }): Promise<void> => {
+  return (input: { email: string }): void => {
     deps.runInBackground(async () => {
       const acquired = await deps.emailCooldown.tryAcquire("login", input.email);
       if (!acquired) {

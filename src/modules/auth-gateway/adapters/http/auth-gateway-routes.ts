@@ -89,7 +89,7 @@ export function registerAuthGatewayRoutes(
       },
     },
     async (request, reply) => {
-      await deps.requestLoginCode(request.body);
+      deps.requestLoginCode(request.body);
       return reply.status(202).send({ status: "code_sent" });
     },
   );
