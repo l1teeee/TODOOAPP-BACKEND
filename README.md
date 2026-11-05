@@ -139,6 +139,8 @@ Required Supabase settings: disable **Allow new users to sign up** so public sig
 
 Set `DEEPINFRA_API_KEY` on Railway to enable the AI assistant module. `DEEPINFRA_MODEL` selects the model and defaults to `deepseek-ai/DeepSeek-V4-Flash-0731`. Authenticated clients can send an activity title and optional description to `POST /v1/ai/subtask-suggestions` to receive up to five suggested subtask titles. The activity text is sent to DeepInfra to generate the suggestions.
 
+Authenticated clients can send a first name, local time, locale and today's items to `POST /v1/ai/daily-brief` to receive a friendly reminder message. Activity titles and times are sent to DeepInfra along with the other supplied details. When the module is off, the frontend falls back to a local message.
+
 ## Deploy on Railway
 
 Create a new service from [TODOOAPP-BACKEND](https://github.com/l1teeee/TODOOAPP-BACKEND). Railway uses the Railpack builder configured in `railway.json`. Set the environment variables, including `TRUST_PROXY_HOPS=1`, generate a public domain, and use `/health` as the healthcheck.
