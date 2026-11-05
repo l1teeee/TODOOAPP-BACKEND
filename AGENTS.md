@@ -49,6 +49,7 @@ Satellites own their association tables, with foreign keys to `activitiesTable` 
 
 ## Platform services
 
+- Modules render emails with `renderEmail` from `src/platform/email/email-layout.ts`; never build email HTML by hand.
 - `ModuleContext` provides `config`, raw `env` for module-specific variables, `logger`, `db`, `events`, `email` and the `requireUser` authentication hook. Modules attach `requireUser` with `onRequest` so authentication runs before body parsing.
 - Modules are created through `ModuleFactory`; they may provide `registerRoutes` and background `jobs`.
 - Integration events carry `{ type, occurredAt, payload }`. Subscribers validate their own payload with zod; publishers and subscribers never share payload types. In-process handlers run in order; failures are logged without rejecting publication because the publisher's work is already committed.

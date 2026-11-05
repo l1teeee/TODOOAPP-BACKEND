@@ -8,6 +8,7 @@ import { createSupabaseIdentityAdmin } from "./adapters/supabase-identity-admin.
 import { createTurnstileHumanVerifier } from "./adapters/turnstile-human-verifier.js";
 import type { BackgroundRunner } from "./application/ports.js";
 import { createRegisterAccount } from "./application/register-account.js";
+import { createRequestLoginCode } from "./application/request-login-code.js";
 import { createRequestPasswordReset } from "./application/request-password-reset.js";
 import { parseAuthGatewayConfig } from "./config.js";
 
@@ -17,13 +18,17 @@ export const createAuthGatewayModule: ModuleFactory = (context: ModuleContext): 
   const identityAdmin = createSupabaseIdentityAdmin({
     url: context.config.supabase.url,
     secretKey: config.SUPABASE_SECRET_KEY,
+    db: context.db,
   });
   const mailer = createAuthMailer(context.email);
   const emailCooldown = createDrizzleEmailCooldown(context.db);
   const pending = new Set<Promise<void>>();
 
   function makeBackgroundRunner(
-    event: "auth_gateway.register_failed" | "auth_gateway.password_reset_failed",
+    event:
+      | "auth_gateway.register_failed"
+      | "auth_gateway.password_reset_failed"
+      | "auth_gateway.login_code_failed",
   ): BackgroundRunner {
     return (task) => {
       let timer: NodeJS.Timeout | undefined;
@@ -66,6 +71,12 @@ export const createAuthGatewayModule: ModuleFactory = (context: ModuleContext): 
     emailCooldown,
     runInBackground: makeBackgroundRunner("auth_gateway.password_reset_failed"),
   });
+  const requestLoginCode = createRequestLoginCode({
+    identityAdmin,
+    mailer,
+    emailCooldown,
+    runInBackground: makeBackgroundRunner("auth_gateway.login_code_failed"),
+  });
 
   return {
     name: "auth-gateway",
@@ -73,7 +84,11 @@ export const createAuthGatewayModule: ModuleFactory = (context: ModuleContext): 
       server.addHook("onClose", async () => {
         await Promise.allSettled(pending);
       });
-      registerAuthGatewayRoutes(server, { registerAccount, requestPasswordReset });
+      registerAuthGatewayRoutes(server, {
+        registerAccount,
+        requestPasswordReset,
+        requestLoginCode,
+      });
       return Promise.resolve();
     },
   };
