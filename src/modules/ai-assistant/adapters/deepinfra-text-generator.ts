@@ -14,7 +14,7 @@ const contentSchema = z.object({
 const briefSchema = z.object({
   message: z
     .string()
-    .transform((value) => value.replace(/\p{Cc}/gu, ""))
+    .transform((value) => value.replace(/[\p{Cc}\p{Cf}]/gu, ""))
     .pipe(z.string().trim().min(1).max(280)),
 });
 
@@ -80,71 +80,80 @@ async function readCappedBody(response: Response, controller: AbortController): 
   return Buffer.concat(chunks).toString("utf8");
 }
 
-export function createDeepinfraTextGenerator(options: {
+interface GeneratorConfig {
   apiKey: string;
   model: string;
   timeoutMs: number;
   logger: ModuleContext["logger"];
-}): SubtaskSuggester & DailyBriefWriter {
-  async function completeJson<T>(
-    messages: { role: string; content: string }[],
-    schema: z.ZodType<T>,
-    maxTokens: number,
-  ): Promise<T> {
-    const controller = new AbortController();
-    let response: Response;
-    try {
-      response = await fetch("https://api.deepinfra.com/v1/openai/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${options.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(options.timeoutMs)]),
-        body: JSON.stringify({
-          model: options.model,
-          temperature: maxTokens === 200 ? 0.6 : 0.3,
-          max_tokens: maxTokens,
-          response_format: { type: "json_object" },
-          messages,
-        }),
-      });
-    } catch (error) {
-      options.logger.error({
-        event: "ai_assistant.request_failed",
-        errorName: error instanceof Error ? error.name : "UnknownError",
-      });
-      throw unavailable();
-    }
-    assertOk(response, options.logger);
-    let body: string;
-    try {
-      body = await readCappedBody(response, controller);
-    } catch (error) {
-      if (error instanceof AppError) throw error;
-      options.logger.error({
-        event: "ai_assistant.request_failed",
-        errorName: error instanceof Error ? error.name : "UnknownError",
-      });
-      throw unavailable();
-    }
-    try {
-      const envelope = responseSchema.parse(JSON.parse(body));
-      return schema.parse(JSON.parse(envelope.choices[0].message.content));
-    } catch {
-      options.logger.debug({ event: "ai_assistant.bad_response" });
-      throw badResponse();
-    }
-  }
+}
 
+async function completeJson<T>(
+  config: GeneratorConfig,
+  messages: { role: string; content: string }[],
+  schema: z.ZodType<T>,
+  options: { maxTokens: number; temperature: number },
+): Promise<T> {
+  const controller = new AbortController();
+  let response: Response;
+  try {
+    response = await fetch("https://api.deepinfra.com/v1/openai/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(config.timeoutMs)]),
+      body: JSON.stringify({
+        model: config.model,
+        temperature: options.temperature,
+        max_tokens: options.maxTokens,
+        response_format: { type: "json_object" },
+        messages,
+      }),
+    });
+  } catch (error) {
+    config.logger.error({
+      event: "ai_assistant.request_failed",
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+    throw unavailable();
+  }
+  assertOk(response, config.logger);
+  let body: string;
+  try {
+    body = await readCappedBody(response, controller);
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    config.logger.error({
+      event: "ai_assistant.request_failed",
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+    throw unavailable();
+  }
+  try {
+    const envelope = responseSchema.parse(JSON.parse(body));
+    return schema.parse(JSON.parse(envelope.choices[0].message.content));
+  } catch {
+    config.logger.debug({ event: "ai_assistant.bad_response" });
+    throw badResponse();
+  }
+}
+
+export function createDeepinfraTextGenerator(
+  config: GeneratorConfig,
+): SubtaskSuggester & DailyBriefWriter {
   return {
     async suggest(input) {
-      const content = await completeJson(buildSuggestionMessages(input), contentSchema, 300);
+      const content = await completeJson(config, buildSuggestionMessages(input), contentSchema, {
+        maxTokens: 300,
+        temperature: 0.3,
+      });
       return [...new Set(content.subtasks)];
     },
     async write(input) {
       const data = JSON.stringify(input).replaceAll("<", "\\u003c").replaceAll(">", "\\u003e");
       const content = await completeJson(
+        config,
         [
           {
             role: "system",
@@ -154,7 +163,7 @@ export function createDeepinfraTextGenerator(options: {
           { role: "user", content: `<data>\n${data}\n</data>` },
         ],
         briefSchema,
-        200,
+        { maxTokens: 200, temperature: 0.6 },
       );
       return content.message;
     },

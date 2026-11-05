@@ -63,10 +63,10 @@ export function registerAiRoutes(
             .array(
               z.strictObject({
                 kind: z.enum(["habit", "reminder", "task"]),
-                title: z.string().min(1).max(120),
+                title: z.string().trim().min(1).max(120),
                 startTime: time.nullable(),
                 endTime: time.nullable(),
-                location: z.string().max(120).nullable(),
+                location: z.string().trim().min(1).max(120).nullable(),
                 status: z.enum(["todo", "in_progress", "completed"]),
               }),
             )
@@ -75,6 +75,7 @@ export function registerAiRoutes(
         response: { 200: z.object({ message: z.string() }) },
       },
     },
+    // The message is plain text; clients must render it as text, never HTML.
     async (request) => ({ message: await writeDailyBrief(suggester, request.body) }),
   );
 }
