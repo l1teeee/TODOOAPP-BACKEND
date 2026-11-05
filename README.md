@@ -103,6 +103,18 @@ Modules parse their own environment variables from `ModuleContext.env`.
 
 Send the Supabase access token as `Authorization: Bearer <token>` to `GET /v1/me` or `PATCH /v1/me`. The API verifies the token against Supabase JWKS and ensures a local profile. PATCH accepts `displayName` (trimmed, 1-80 characters, or null), `timezone` (from `Intl.supportedValuesOf("timeZone")`) and `emailNotifications` (boolean), with at least one field and no extra keys.
 
+## Auth flows
+
+The `auth-gateway` module must be registered in `src/modules/index.ts` at integration. Configure `TURNSTILE_SECRET_KEY` and the server-only `SUPABASE_SECRET_KEY` (a Supabase secret or service_role key). Set `EMAIL_PROVIDER=brevo` and configure the platform email sender to deliver these emails through Brevo. Brevo needs an authenticated sender domain for good delivery.
+
+- Register: the frontend obtains a Turnstile token, then sends `{ email, password, fullName, turnstileToken }` to `POST /v1/auth/register`. The API verifies Turnstile, generates a signup code with the Supabase admin API, and sends the code through the platform email sender. The frontend confirms the email with Supabase `verifyOtp({ email, token: code, type: "signup" })`.
+- Forgot password: the frontend obtains a Turnstile token and sends `{ email, turnstileToken }` to `POST /v1/auth/password-reset`. The API generates and emails a recovery code. The frontend calls Supabase `verifyOtp({ email, token: code, type: "recovery" })`, then `updateUser({ password })` using the resulting session.
+- Login: the frontend authenticates directly against Supabase.
+
+Both API routes return `202` after CAPTCHA verification while code generation and email delivery run in the background. Registration returns `{ status: "verification_sent" }` and password reset returns `{ status: "reset_sent" }`, regardless of whether the email exists. An existing account receives an account reminder on registration; an unknown email receives no recovery email. Each route allows five requests per IP every 15 minutes.
+
+Required Supabase settings: disable **Allow new users to sign up** so public signup cannot bypass Turnstile (admin-generated sign-ups still work), set email OTP length to **6**, OTP expiry to **3600 seconds**, and password minimum length to **8**. The browser handles code verification and password updates directly against Supabase; the API uses admin-generated codes so Supabase does not send these emails.
+
 ## Deploy on Railway
 
 Create a new service from [TODOOAPP-BACKEND](https://github.com/l1teeee/TODOOAPP-BACKEND). Railway uses the Railpack builder configured in `railway.json`. Set the environment variables, including `TRUST_PROXY_HOPS=1`, generate a public domain, and use `/health` as the healthcheck.
