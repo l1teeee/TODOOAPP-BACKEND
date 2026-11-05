@@ -47,15 +47,7 @@ export async function updateActivity(
   }
   const merged = { ...current, ...patch };
   assertActivityRules(merged);
-  const updated = await repository.update(
-    userId,
-    id,
-    {
-      ...patch,
-      completedAt: statusChange(current, merged.status, new Date()),
-    },
-    extensionValues,
-  );
+  const updated = await repository.update(userId, id, patch, extensionValues);
   if (!updated) {
     throw activityNotFound();
   }

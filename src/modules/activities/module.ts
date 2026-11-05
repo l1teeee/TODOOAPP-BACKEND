@@ -1,9 +1,8 @@
-import { and, eq, isNull } from "drizzle-orm";
 import type { ModuleContext } from "../../platform/modules/app-module.js";
 import { createActivityPresenter } from "./adapters/http/activity-presenter.js";
 import { registerActivityRoutes } from "./adapters/http/activity-routes.js";
+import { createActivityAccess } from "./adapters/persistence/drizzle-activity-access.js";
 import { createDrizzleActivityRepository } from "./adapters/persistence/drizzle-activity-repository.js";
-import { activities } from "./adapters/persistence/schema.js";
 import { createExtensionPoints } from "./extension-points.js";
 import type { ActivitiesModule } from "./public.js";
 
@@ -20,20 +19,6 @@ export function createActivitiesModule(context: ModuleContext): ActivitiesModule
       },
     },
     extensions,
-    access: {
-      async findOwned({ userId, activityId }) {
-        const [activity] = await context.db
-          .select({ id: activities.id, kind: activities.kind, title: activities.title })
-          .from(activities)
-          .where(
-            and(
-              eq(activities.userId, userId),
-              eq(activities.id, activityId),
-              isNull(activities.deletedAt),
-            ),
-          );
-        return activity ?? null;
-      },
-    },
+    access: createActivityAccess(context.db),
   };
 }

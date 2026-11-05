@@ -3,6 +3,9 @@ import type { ExtensionRegistry } from "../../extension-points.js";
 
 export function createActivityPresenter(extensions: ExtensionRegistry) {
   return async function presentActivities(userId: string, activities: readonly Activity[]) {
+    if (activities.length === 0) {
+      return [];
+    }
     const activityIds = activities.map((activity) => activity.id);
     const loaded = await Promise.all(
       extensions.views().map(async (extension) => ({
@@ -18,7 +21,16 @@ export function createActivityPresenter(extensions: ExtensionRegistry) {
           : extension.fallback;
       }
       return {
-        ...activity,
+        id: activity.id,
+        kind: activity.kind,
+        title: activity.title,
+        description: activity.description,
+        status: activity.status,
+        scheduledDate: activity.scheduledDate,
+        startTime: activity.startTime,
+        endTime: activity.endTime,
+        location: activity.location,
+        icon: activity.icon,
         completedAt: activity.completedAt?.toISOString() ?? null,
         deletedAt: activity.deletedAt?.toISOString() ?? null,
         createdAt: activity.createdAt.toISOString(),

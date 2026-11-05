@@ -15,6 +15,7 @@ export interface ActivityViewExtension<T> {
   load(input: { userId: string; activityIds: readonly string[] }): Promise<ReadonlyMap<string, T>>;
 }
 
+/** Implementations must scope every query by userId and validate ownership of any ids in the value. */
 export interface ActivityFilterExtension {
   // Names the satellite's optional list query parameter.
   readonly param: string;
@@ -24,6 +25,7 @@ export interface ActivityFilterExtension {
   condition(input: { userId: string; value: string }): SQL;
 }
 
+/** Implementations must scope every query by userId and validate ownership of any ids in the value. */
 export interface ActivityWriteExtension<T> {
   // Names the satellite's optional create and patch field.
   readonly field: string;

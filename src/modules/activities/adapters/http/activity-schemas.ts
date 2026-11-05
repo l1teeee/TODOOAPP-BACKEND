@@ -78,7 +78,6 @@ export function createActivitySchemas(extensions: ExtensionRegistry) {
   });
   const activity = z.object({
     id: z.uuid(),
-    userId: z.uuid(),
     ...baseFields,
     completedAt: z.iso.datetime().nullable(),
     deletedAt: z.iso.datetime().nullable(),

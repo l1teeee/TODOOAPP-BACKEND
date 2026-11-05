@@ -38,7 +38,7 @@ export interface ActivityRepository {
   update(
     userId: string,
     id: string,
-    patch: ActivityPatch & { completedAt?: Date | null },
+    patch: ActivityPatch,
     extensionValues: Readonly<Record<string, unknown>>,
   ): Promise<Activity | null>;
   findOwned(userId: string, id: string): Promise<Activity | null>;

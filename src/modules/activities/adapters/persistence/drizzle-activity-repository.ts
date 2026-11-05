@@ -24,42 +24,75 @@ interface Cursor {
   id: string;
 }
 
-function decodeCursor(value: string): Cursor {
+function parseCursorPayload(value: string): unknown {
+  let decoded: Buffer;
+  let payload: unknown;
   try {
-    const decoded = Buffer.from(value, "base64url");
-    if (decoded.toString("base64url") !== value) {
-      throw activityInvalid("Invalid cursor");
-    }
-    const cursor: unknown = JSON.parse(decoded.toString("utf8"));
-    if (
-      typeof cursor !== "object" ||
-      cursor === null ||
-      !("t" in cursor) ||
-      !("id" in cursor) ||
-      typeof cursor.t !== "string" ||
-      typeof cursor.id !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/.test(cursor.t) ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cursor.id)
-    ) {
-      throw activityInvalid("Invalid cursor");
-    }
-    const timestamp = new Date(cursor.t);
-    if (
-      !Number.isFinite(timestamp.getTime()) ||
-      timestamp.toISOString().slice(0, 19) !== cursor.t.slice(0, 19)
-    ) {
-      throw activityInvalid("Invalid cursor");
-    }
-    return { t: cursor.t, id: cursor.id };
+    decoded = Buffer.from(value, "base64url");
+    payload = JSON.parse(decoded.toString("utf8"));
   } catch {
     throw activityInvalid("Invalid cursor");
   }
+  if (decoded.toString("base64url") !== value) {
+    throw activityInvalid("Invalid cursor");
+  }
+  return payload;
+}
+
+function assertValidTimestamp(value: string): void {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/.test(value)) {
+    throw activityInvalid("Invalid cursor");
+  }
+  const timestamp = new Date(value);
+  if (
+    !Number.isFinite(timestamp.getTime()) ||
+    timestamp.getUTCFullYear() < 1 ||
+    timestamp.getUTCFullYear() > 9999 ||
+    timestamp.toISOString().slice(0, 19) !== value.slice(0, 19)
+  ) {
+    throw activityInvalid("Invalid cursor");
+  }
+}
+
+function decodeCursor(value: string): Cursor {
+  const cursor = parseCursorPayload(value);
+  if (
+    typeof cursor !== "object" ||
+    cursor === null ||
+    !("t" in cursor) ||
+    !("id" in cursor) ||
+    typeof cursor.t !== "string" ||
+    typeof cursor.id !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cursor.id)
+  ) {
+    throw activityInvalid("Invalid cursor");
+  }
+  assertValidTimestamp(cursor.t);
+  return { t: cursor.t, id: cursor.id };
 }
 
 export function createDrizzleActivityRepository(
   db: DbExecutor,
   extensions: ExtensionRegistry,
 ): ActivityRepository {
+  async function applyWrites(
+    tx: DbExecutor,
+    userId: string,
+    activityId: string,
+    extensionValues: Readonly<Record<string, unknown>>,
+  ): Promise<void> {
+    for (const extension of extensions.writes()) {
+      if (Object.hasOwn(extensionValues, extension.field)) {
+        await extension.apply({
+          executor: tx,
+          userId,
+          activityId,
+          value: extensionValues[extension.field],
+        });
+      }
+    }
+  }
+
   async function paginated(
     userId: string,
     page: Page,
@@ -109,39 +142,30 @@ export function createDrizzleActivityRepository(
         if (!row) {
           throw new Error("Activity insert returned no row");
         }
-        for (const extension of extensions.writes()) {
-          if (Object.hasOwn(extensionValues, extension.field)) {
-            await extension.apply({
-              executor: tx,
-              userId,
-              activityId: row.id,
-              value: extensionValues[extension.field],
-            });
-          }
-        }
+        await applyWrites(tx, userId, row.id, extensionValues);
         return presentRow(row);
       });
     },
     async update(userId, id, patch, extensionValues) {
       return db.transaction(async (tx) => {
+        const incomingStatus = patch.status ?? activities.status;
         const [row] = await tx
           .update(activities)
-          .set({ ...patch, updatedAt: sql`now()` })
+          .set({
+            ...patch,
+            completedAt: sql`case
+              when ${incomingStatus} = 'completed' and ${activities.status} <> 'completed' then now()
+              when ${incomingStatus} <> 'completed' and ${activities.status} = 'completed' then null
+              else ${activities.completedAt}
+            end`,
+            updatedAt: sql`now()`,
+          })
           .where(and(owned(userId, id), isNull(activities.deletedAt)))
           .returning();
         if (!row) {
           return null;
         }
-        for (const extension of extensions.writes()) {
-          if (Object.hasOwn(extensionValues, extension.field)) {
-            await extension.apply({
-              executor: tx,
-              userId,
-              activityId: id,
-              value: extensionValues[extension.field],
-            });
-          }
-        }
+        await applyWrites(tx, userId, id, extensionValues);
         return presentRow(row);
       });
     },
