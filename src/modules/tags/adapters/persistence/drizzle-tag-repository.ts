@@ -1,28 +1,24 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import type { DbExecutor } from "../../../../platform/db/database.js";
+import {
+  isForeignKeyViolation,
+  isUniqueViolation,
+} from "../../../../platform/db/postgres-errors.js";
 import type { TagRepository } from "../../application/ports.js";
-import { tagNameTaken } from "../../domain/tag-errors.js";
+import { tagNameTaken, tagNotFound } from "../../domain/tag-errors.js";
 import { tags } from "./schema.js";
-
-function isNameConflict(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) {
-    return false;
-  }
-  if (
-    "code" in error &&
-    error.code === "23505" &&
-    "constraint" in error &&
-    error.constraint === "tags_user_name_unique"
-  ) {
-    return true;
-  }
-  return error instanceof Error && isNameConflict(error.cause);
-}
 
 export function createDrizzleTagRepository(db: DbExecutor): TagRepository {
   return {
     list(userId) {
       return db.select().from(tags).where(eq(tags.userId, userId)).orderBy(tags.name);
+    },
+    async count(userId) {
+      const [row] = await db.select({ count: count() }).from(tags).where(eq(tags.userId, userId));
+      if (!row) {
+        throw new Error("Tag count returned no row");
+      }
+      return row.count;
     },
     async create(userId, fields) {
       try {
@@ -35,8 +31,11 @@ export function createDrizzleTagRepository(db: DbExecutor): TagRepository {
         }
         return row;
       } catch (error) {
-        if (isNameConflict(error)) {
+        if (isUniqueViolation(error, "tags_user_name_unique")) {
           throw tagNameTaken();
+        }
+        if (isForeignKeyViolation(error)) {
+          throw tagNotFound();
         }
         throw error;
       }
@@ -50,8 +49,11 @@ export function createDrizzleTagRepository(db: DbExecutor): TagRepository {
           .returning();
         return row ?? null;
       } catch (error) {
-        if (isNameConflict(error)) {
+        if (isUniqueViolation(error, "tags_user_name_unique")) {
           throw tagNameTaken();
+        }
+        if (isForeignKeyViolation(error)) {
+          throw tagNotFound();
         }
         throw error;
       }

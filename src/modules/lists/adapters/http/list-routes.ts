@@ -10,7 +10,7 @@ const fields = {
   icon: z.string().regex(/^[a-z0-9-]{1,40}$/),
   position: z.number().int().min(0).max(999),
 };
-const listSchema = z.object({ id: z.uuid(), ...fields });
+const listSchema = z.object({ id: z.uuid(), ...fields, position: z.number().int().min(0) });
 const createSchema = z.strictObject({ name: fields.name, icon: fields.icon });
 const patchSchema = z
   .strictObject(fields)

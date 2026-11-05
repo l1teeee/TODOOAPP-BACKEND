@@ -1,6 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { DbExecutor } from "../../../../platform/db/database.js";
+import { isForeignKeyViolation } from "../../../../platform/db/postgres-errors.js";
 import { activitiesTable } from "../../../activities/public.js";
 import type { ActivitiesExtensionPoints } from "../../../activities/public.js";
 import { listNotFound } from "../../domain/list-errors.js";
@@ -55,14 +56,21 @@ export function registerListActivityExtensions(
       if (!list) {
         throw listNotFound();
       }
-      await executor
-        .insert(activityLists)
-        .values({ userId, activityId, listId: value })
-        .onConflictDoUpdate({
-          target: activityLists.activityId,
-          set: { listId: value },
-          setWhere: eq(activityLists.userId, userId),
-        });
+      try {
+        await executor
+          .insert(activityLists)
+          .values({ userId, activityId, listId: value })
+          .onConflictDoUpdate({
+            target: activityLists.activityId,
+            set: { listId: value },
+            setWhere: eq(activityLists.userId, userId),
+          });
+      } catch (error) {
+        if (isForeignKeyViolation(error)) {
+          throw listNotFound();
+        }
+        throw error;
+      }
     },
   });
 }

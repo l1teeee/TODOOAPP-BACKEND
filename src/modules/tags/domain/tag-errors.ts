@@ -7,3 +7,7 @@ export function tagNotFound(): AppError {
 export function tagNameTaken(): AppError {
   return new AppError("conflict", "TAG_NAME_TAKEN", "Tag name is already taken");
 }
+
+export function tagLimitReached(): AppError {
+  return new AppError("conflict", "TAG_LIMIT_REACHED", "A user can have at most 200 tags");
+}

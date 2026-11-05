@@ -7,3 +7,7 @@ export function listNotFound(): AppError {
 export function listNameTaken(): AppError {
   return new AppError("conflict", "LIST_NAME_TAKEN", "List name is already taken");
 }
+
+export function listLimitReached(): AppError {
+  return new AppError("conflict", "LIST_LIMIT_REACHED", "A user can have at most 200 lists");
+}

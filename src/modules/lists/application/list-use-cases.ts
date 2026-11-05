@@ -1,17 +1,20 @@
 import type { List } from "../domain/list.js";
-import { listNotFound } from "../domain/list-errors.js";
+import { listLimitReached, listNotFound } from "../domain/list-errors.js";
 import type { CreateListFields, ListPatch, ListRepository } from "./ports.js";
 
 export function listLists(repository: ListRepository, userId: string): Promise<List[]> {
   return repository.list(userId);
 }
 
-export function createList(
+export async function createList(
   repository: ListRepository,
   userId: string,
   input: CreateListFields,
 ): Promise<List> {
-  return repository.create(userId, { ...input, position: 0 });
+  if ((await repository.count(userId)) >= 200) {
+    throw listLimitReached();
+  }
+  return repository.create(userId, input);
 }
 
 export async function updateList(

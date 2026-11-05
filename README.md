@@ -123,14 +123,14 @@ The active list accepts `from` and `to` together (real `YYYY-MM-DD` dates, inclu
 
 All lists endpoints require the Supabase bearer token and scope data to the authenticated user. List JSON is `{ id, name, icon, position }`.
 
-| Method | Endpoint        | Response        | Purpose                                                      |
-| ------ | --------------- | --------------- | ------------------------------------------------------------ |
-| GET    | `/v1/lists`     | 200 `{ items }` | List lists ordered by position, then creation time.          |
-| POST   | `/v1/lists`     | 201 list        | Create a list with `{ name, icon }`; position defaults to 0. |
-| PATCH  | `/v1/lists/:id` | 200 list        | Update one or more of `{ name, icon, position }`.            |
-| DELETE | `/v1/lists/:id` | 204             | Delete the list and its associations; activities stay.       |
+| Method | Endpoint        | Response        | Purpose                                                                  |
+| ------ | --------------- | --------------- | ------------------------------------------------------------------------ |
+| GET    | `/v1/lists`     | 200 `{ items }` | List lists ordered by position, then creation time.                      |
+| POST   | `/v1/lists`     | 201 list        | Create a list with `{ name, icon }`, after the current maximum position. |
+| PATCH  | `/v1/lists/:id` | 200 list        | Update one or more of `{ name, icon, position }`.                        |
+| DELETE | `/v1/lists/:id` | 204             | Delete the list and its associations; activities stay.                   |
 
-Names are trimmed to 1-40 characters and unique per user ignoring case. Icons match `^[a-z0-9-]{1,40}$`; positions are integers from 0 to 999. Missing or unowned lists return `LIST_NOT_FOUND` (404); duplicate names return `LIST_NAME_TAKEN` (409).
+Names are trimmed to 1-40 characters and unique per user ignoring case. Icons match `^[a-z0-9-]{1,40}$`; position updates accept integers from 0 to 999. New lists get the user's current maximum position plus one, computed in the insert statement, starting at 0 for an empty workspace. Missing or unowned lists return `LIST_NOT_FOUND` (404); duplicate names return `LIST_NAME_TAKEN` (409). Creating a list when the user already has 200 returns `LIST_LIMIT_REACHED` (409).
 
 The lists factory registers activity extensions before routes: the response field `listId` is a UUID or null, the active activity list accepts a `listId` UUID filter, and activity create/patch accepts `listId` to assign an owned list or null to clear it. Associations are written in the activity transaction and response values load in one batched query.
 
@@ -145,7 +145,7 @@ All tags endpoints require the Supabase bearer token and scope data to the authe
 | PATCH  | `/v1/tags/:id` | 200 tag         | Update one or more of `{ name, color }`.              |
 | DELETE | `/v1/tags/:id` | 204             | Delete the tag and its associations; activities stay. |
 
-Names are trimmed, lowercased and must match `^[a-z0-9][a-z0-9-]{0,29}$`, with case-insensitive uniqueness per user. Colors are `purple`, `blue`, `pink`, `orange`, `green` or `gray`. Missing or unowned tags return `TAG_NOT_FOUND` (404); duplicate names return `TAG_NAME_TAKEN` (409).
+Names are trimmed, lowercased and must match `^[a-z0-9][a-z0-9-]{0,29}$`, with case-insensitive uniqueness per user. Colors are `purple`, `blue`, `pink`, `orange`, `green` or `gray`. Missing or unowned tags return `TAG_NOT_FOUND` (404); duplicate names return `TAG_NAME_TAKEN` (409). Creating a tag when the user already has 200 returns `TAG_LIMIT_REACHED` (409).
 
 The tags factory registers activity extensions before routes: the response field `tagIds` is an array of UUIDs (empty when untagged), the active activity list accepts a `tagId` UUID filter, and activity create/patch accepts `tagIds` with at most 10 unique owned tag UUIDs. Writing `tagIds` replaces the set; an empty array clears it. Ownership is checked in one count query, replacements use the activity transaction, and response values load in one batched query.
 

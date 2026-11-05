@@ -1,6 +1,7 @@
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { DbExecutor } from "../../../../platform/db/database.js";
+import { isForeignKeyViolation } from "../../../../platform/db/postgres-errors.js";
 import { activitiesTable } from "../../../activities/public.js";
 import type { ActivitiesExtensionPoints } from "../../../activities/public.js";
 import { tagNotFound } from "../../domain/tag-errors.js";
@@ -66,9 +67,16 @@ export function registerTagActivityExtensions(
         .delete(activityTags)
         .where(and(eq(activityTags.userId, userId), eq(activityTags.activityId, activityId)));
       if (value.length > 0) {
-        await executor
-          .insert(activityTags)
-          .values(value.map((tagId) => ({ userId, activityId, tagId })));
+        try {
+          await executor
+            .insert(activityTags)
+            .values(value.map((tagId) => ({ userId, activityId, tagId })));
+        } catch (error) {
+          if (isForeignKeyViolation(error)) {
+            throw tagNotFound();
+          }
+          throw error;
+        }
       }
     },
   });
