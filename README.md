@@ -103,6 +103,10 @@ Modules parse their own environment variables from `ModuleContext.env`.
 
 Send the Supabase access token as `Authorization: Bearer <token>` to `GET /v1/me` or `PATCH /v1/me`. The API verifies the token against Supabase JWKS and ensures a local profile. PATCH accepts `displayName` (trimmed, 1-80 characters, or null), `timezone` (from `Intl.supportedValuesOf("timeZone")`) and `emailNotifications` (boolean), with at least one field and no extra keys.
 
+## AI assistant
+
+Set `DEEPINFRA_API_KEY` on Railway to enable the AI assistant module. `DEEPINFRA_MODEL` selects the model and defaults to `deepseek-ai/DeepSeek-V4-Flash-0731`. Authenticated clients can send an activity title and optional description to `POST /v1/ai/subtask-suggestions` to receive up to five suggested subtask titles. The activity text is sent to DeepInfra to generate the suggestions.
+
 ## Deploy on Railway
 
 Create a new service from [TODOOAPP-BACKEND](https://github.com/l1teeee/TODOOAPP-BACKEND). Railway uses the Railpack builder configured in `railway.json`. Set the environment variables, including `TRUST_PROXY_HOPS=1`, generate a public domain, and use `/health` as the healthcheck.
