@@ -3238,7 +3238,8 @@
                   },
                   "locale": {
                     "type": "string",
-                    "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+                    "maxLength": 35,
+                    "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}$"
                   },
                   "items": {
                     "maxItems": 30,

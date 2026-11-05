@@ -5,6 +5,12 @@ import type { DailyBriefWriter, SubtaskSuggester } from "../../application/ports
 import { suggestSubtasks } from "../../application/suggest-subtasks.js";
 import { writeDailyBrief } from "../../application/write-daily-brief.js";
 
+// BCP 47 language tags such as "en", "en-US", "es-419" or "zh-Hant-TW".
+export const localeSchema = z
+  .string()
+  .max(35)
+  .regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}$/);
+
 export function registerAiRoutes(
   server: HttpServer,
   context: ModuleContext,
@@ -58,7 +64,7 @@ export function registerAiRoutes(
         body: z.strictObject({
           firstName: z.string().trim().min(1).max(40).nullable(),
           localTime: time,
-          locale: z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/),
+          locale: localeSchema,
           items: z
             .array(
               z.strictObject({
