@@ -9,9 +9,16 @@ import { tagNameTaken, tagNotFound } from "../../domain/tag-errors.js";
 import { tags } from "./schema.js";
 
 export function createDrizzleTagRepository(db: DbExecutor): TagRepository {
+  const list = db
+    .select()
+    .from(tags)
+    .where(eq(tags.userId, sql.placeholder("userId")))
+    .orderBy(tags.name)
+    .prepare("tags_list");
+
   return {
     list(userId) {
-      return db.select().from(tags).where(eq(tags.userId, userId)).orderBy(tags.name);
+      return list.execute({ userId });
     },
     async count(userId) {
       const [row] = await db.select({ count: count() }).from(tags).where(eq(tags.userId, userId));

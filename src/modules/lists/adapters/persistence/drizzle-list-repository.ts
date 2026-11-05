@@ -9,13 +9,16 @@ import { listNameTaken, listNotFound } from "../../domain/list-errors.js";
 import { lists } from "./schema.js";
 
 export function createDrizzleListRepository(db: DbExecutor): ListRepository {
+  const list = db
+    .select()
+    .from(lists)
+    .where(eq(lists.userId, sql.placeholder("userId")))
+    .orderBy(lists.position, lists.createdAt)
+    .prepare("lists_list");
+
   return {
     list(userId) {
-      return db
-        .select()
-        .from(lists)
-        .where(eq(lists.userId, userId))
-        .orderBy(lists.position, lists.createdAt);
+      return list.execute({ userId });
     },
     async count(userId) {
       const [row] = await db.select({ count: count() }).from(lists).where(eq(lists.userId, userId));

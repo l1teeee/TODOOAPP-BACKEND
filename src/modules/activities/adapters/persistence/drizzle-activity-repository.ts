@@ -1,7 +1,12 @@
 import { and, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
+import type { Placeholder, SQL } from "drizzle-orm";
 import type { DbExecutor } from "../../../../platform/db/database.js";
-import type { ActivityRepository, Page, PageResult } from "../../application/ports.js";
+import type {
+  ActivityListQuery,
+  ActivityRepository,
+  Page,
+  PageResult,
+} from "../../application/ports.js";
 import type { Activity } from "../../domain/activity.js";
 import { activityInvalid } from "../../domain/activity-errors.js";
 import type { ExtensionRegistry } from "../../extension-points.js";
@@ -15,8 +20,23 @@ function presentRow(row: typeof activities.$inferSelect): Activity {
   };
 }
 
-function owned(userId: string, id: string): SQL {
+function owned(userId: string | Placeholder, id: string | Placeholder): SQL {
   return sql`${activities.userId} = ${userId} and ${activities.id} = ${id}`;
+}
+
+function isPlainRangeQuery(
+  query: ActivityListQuery,
+  filters: ReturnType<ExtensionRegistry["filters"]>,
+): boolean {
+  return (
+    !query.unscheduled &&
+    query.from !== undefined &&
+    query.to !== undefined &&
+    query.kind === undefined &&
+    query.status === undefined &&
+    query.q === undefined &&
+    filters.every((extension) => query.extensionFilters[extension.param] === undefined)
+  );
 }
 
 interface Cursor {
@@ -75,6 +95,30 @@ export function createDrizzleActivityRepository(
   db: DbExecutor,
   extensions: ExtensionRegistry,
 ): ActivityRepository {
+  // Keep conditions and orderBy identical to the dynamic builder in list().
+  const listRange = db
+    .select()
+    .from(activities)
+    .where(
+      and(
+        eq(activities.userId, sql.placeholder("userId")),
+        isNull(activities.deletedAt),
+        sql`(${activities.kind} = 'habit' or ${activities.scheduledDate} between ${sql.placeholder("from")} and ${sql.placeholder("to")})`,
+      ),
+    )
+    .orderBy(
+      sql`${activities.scheduledDate} asc nulls first`,
+      sql`${activities.startTime} asc nulls last`,
+      desc(activities.createdAt),
+    )
+    .limit(sql.placeholder("limit"))
+    .prepare("activities_list_range");
+  const findOwned = db
+    .select()
+    .from(activities)
+    .where(owned(sql.placeholder("userId"), sql.placeholder("id")))
+    .prepare("activities_find_owned");
+
   async function applyWrites(
     tx: DbExecutor,
     userId: string,
@@ -170,10 +214,19 @@ export function createDrizzleActivityRepository(
       });
     },
     async findOwned(userId, id) {
-      const [row] = await db.select().from(activities).where(owned(userId, id));
+      const [row] = await findOwned.execute({ userId, id });
       return row ? presentRow(row) : null;
     },
     async list(userId, query) {
+      if (isPlainRangeQuery(query, extensions.filters())) {
+        const rows = await listRange.execute({
+          userId,
+          from: query.from,
+          to: query.to,
+          limit: query.limit,
+        });
+        return rows.map(presentRow);
+      }
       const conditions = [eq(activities.userId, userId), isNull(activities.deletedAt)];
       if (query.unscheduled) {
         conditions.push(isNull(activities.scheduledDate), ne(activities.kind, "habit"));
