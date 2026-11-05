@@ -11,15 +11,26 @@ export function registerTagActivityExtensions(
   db: DbExecutor,
   extensions: ActivitiesExtensionPoints,
 ): void {
+  const load = db
+    .select({ activityId: activityTags.activityId, tagId: activityTags.tagId })
+    .from(activityTags)
+    .where(
+      and(
+        eq(activityTags.userId, sql.placeholder("userId")),
+        sql`${activityTags.activityId} = any(${sql.placeholder("activityIds")}::uuid[])`,
+      ),
+    )
+    .prepare("tags_activity_load");
+
   extensions.addView({
     field: "tagIds",
     schema: z.array(z.uuid()),
     fallback: [],
     async load({ userId, activityIds }) {
-      const rows = await db
-        .select({ activityId: activityTags.activityId, tagId: activityTags.tagId })
-        .from(activityTags)
-        .where(and(eq(activityTags.userId, userId), inArray(activityTags.activityId, activityIds)));
+      if (activityIds.length === 0) {
+        return new Map<string, string[]>();
+      }
+      const rows = await load.execute({ userId, activityIds });
       const grouped = new Map<string, string[]>();
       for (const row of rows) {
         const tagIds = grouped.get(row.activityId);

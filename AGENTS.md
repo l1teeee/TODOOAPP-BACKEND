@@ -32,6 +32,7 @@ Satellites own their association tables, with foreign keys to `activitiesTable` 
 - Validate input only in `adapters/http` with zod.
 - Scope every query by the authenticated user id.
 - No N+1 queries; batch by ids.
+- Reads that run on most requests use Drizzle prepared statements built once in the repository factory (`sql.placeholder`, `= any(...::uuid[])` for id lists, unique statement names); rare filter combinations keep the dynamic builder; never prepare queries that run inside a transaction. Named prepared statements need a direct or session-mode Postgres connection (Railway private network is fine); never point `DATABASE_URL` at a transaction-mode pooler such as PgBouncer or the Supabase pooler on port 6543.
 - Domain and application code never import fastify, drizzle, pg or SDKs.
 - Errors are `AppError` with a kind, mapped to HTTP only in `src/platform/http/error-handler.ts`.
 - Use ESM with `.js` import suffixes.

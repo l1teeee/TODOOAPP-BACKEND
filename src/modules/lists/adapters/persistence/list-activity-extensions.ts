@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { DbExecutor } from "../../../../platform/db/database.js";
 import { isForeignKeyViolation } from "../../../../platform/db/postgres-errors.js";
@@ -11,17 +11,26 @@ export function registerListActivityExtensions(
   db: DbExecutor,
   extensions: ActivitiesExtensionPoints,
 ): void {
+  const load = db
+    .select({ activityId: activityLists.activityId, listId: activityLists.listId })
+    .from(activityLists)
+    .where(
+      and(
+        eq(activityLists.userId, sql.placeholder("userId")),
+        sql`${activityLists.activityId} = any(${sql.placeholder("activityIds")}::uuid[])`,
+      ),
+    )
+    .prepare("lists_activity_load");
+
   extensions.addView({
     field: "listId",
     schema: z.uuid().nullable(),
     fallback: null,
     async load({ userId, activityIds }) {
-      const rows = await db
-        .select({ activityId: activityLists.activityId, listId: activityLists.listId })
-        .from(activityLists)
-        .where(
-          and(eq(activityLists.userId, userId), inArray(activityLists.activityId, activityIds)),
-        );
+      if (activityIds.length === 0) {
+        return new Map<string, string>();
+      }
+      const rows = await load.execute({ userId, activityIds });
       return new Map(rows.map((row) => [row.activityId, row.listId]));
     },
   });
