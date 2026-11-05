@@ -36,3 +36,12 @@ Delete its folder, remove its entry in `src/modules/index.ts`, and add a migrati
 
 - Dependabot (`.github/dependabot.yml`) opens weekly npm update PRs and security fix PRs. Merge one only after the review below and `npm run check` pass.
 - Review agents: `.claude/agents/security-reviewer.md` and `.claude/agents/quality-reviewer.md`. Run both on every diff before merge; a `VERDICT: BLOCK` stops the merge.
+
+## Platform services
+
+- `ModuleContext` provides `config`, raw `env` for module-specific variables, `logger`, `db`, `events`, `email` and the `requireUser` authentication hook.
+- Modules are created through `ModuleFactory`; they may provide `registerRoutes` and background `jobs`.
+- Integration events carry `{ type, occurredAt, payload }`. Subscribers validate their own payload with zod; publishers and subscribers never share payload types. In-process handlers run in order; failures are logged without rejecting publication because the publisher's work is already committed.
+- `USER_PROFILE_CREATED` is `identity.user_profile_created`, with payload `{ userId: string, email: string }`.
+- Modules own their tables in `adapters/persistence/schema.ts`; never edit `drizzle/` by hand; the brain runs `npm run db:generate` after merging.
+- The worker entry point is `src/worker.ts`. Run it as a separate Railway service with config file `/railway.worker.json`.

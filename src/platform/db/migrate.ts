@@ -1,0 +1,16 @@
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { loadConfig } from "../config/env.js";
+import { createDatabase } from "./database.js";
+
+try {
+  const config = loadConfig(process.env);
+  const database = createDatabase(config.database);
+  try {
+    await migrate(database.db, { migrationsFolder: "drizzle" });
+  } finally {
+    await database.close();
+  }
+} catch (error) {
+  console.error(error);
+  process.exitCode = 1;
+}

@@ -9,7 +9,10 @@ export default defineConfig(
   tseslint.configs.stylisticTypeChecked,
   {
     languageOptions: {
-      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+      parserOptions: {
+        projectService: { allowDefaultProject: ["drizzle.config.ts"] },
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
   { files: ["**/*.mjs"], extends: [tseslint.configs.disableTypeChecked] },
