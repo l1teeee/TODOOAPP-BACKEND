@@ -5,9 +5,8 @@ import type {
   ActivityWriteExtension,
 } from "./public.js";
 
-const coreNames = [
+const coreViewFields = [
   "id",
-  "userId",
   "kind",
   "title",
   "description",
@@ -21,12 +20,18 @@ const coreNames = [
   "deletedAt",
   "createdAt",
   "updatedAt",
-  "from",
-  "to",
-  "unscheduled",
-  "q",
-  "limit",
-  "cursor",
+];
+const coreFilterParams = ["from", "to", "unscheduled", "kind", "status", "q", "limit", "cursor"];
+const coreWriteFields = [
+  "kind",
+  "title",
+  "description",
+  "status",
+  "scheduledDate",
+  "startTime",
+  "endTime",
+  "location",
+  "icon",
 ];
 
 export interface ExtensionRegistry extends ActivitiesExtensionPoints {
@@ -40,10 +45,12 @@ export function createExtensionPoints(): ExtensionRegistry {
   const views: ActivityViewExtension<unknown>[] = [];
   const filters: ActivityFilterExtension[] = [];
   const writes: ActivityWriteExtension<unknown>[] = [];
-  const names = new Set(coreNames);
+  const viewFields = new Set(coreViewFields);
+  const filterParams = new Set(coreFilterParams);
+  const writeFields = new Set(coreWriteFields);
   let frozen = false;
 
-  function register(name: string): void {
+  function register(names: Set<string>, name: string): void {
     if (frozen) {
       throw new Error("Activity extensions must be registered before routes");
     }
@@ -55,15 +62,15 @@ export function createExtensionPoints(): ExtensionRegistry {
 
   return {
     addView(e) {
-      register(e.field);
+      register(viewFields, e.field);
       views.push(e);
     },
     addFilter(e) {
-      register(e.param);
+      register(filterParams, e.param);
       filters.push(e);
     },
     addWrite(e) {
-      register(e.field);
+      register(writeFields, e.field);
       writes.push(e);
     },
     views() {
