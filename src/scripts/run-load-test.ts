@@ -12,7 +12,7 @@ async function loadTokens() {
     content = await readFile(tokensFile, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    throw new Error("Tokens missing; run npm run load:users");
+    throw new Error("Tokens missing; run npm run load:users", { cause: error });
   }
   if (!content.trim()) throw new Error("Tokens missing; run npm run load:users");
   const tokens = z.array(z.object({ expiresAt: z.number() })).parse(JSON.parse(content) as unknown);

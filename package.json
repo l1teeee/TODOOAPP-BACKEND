@@ -34,19 +34,19 @@
     "@fastify/rate-limit": "11.2.2",
     "@fastify/swagger": "9.9.3",
     "@opentelemetry/api": "1.10.0",
-    "@opentelemetry/core": "3.0.0",
-    "@opentelemetry/exporter-logs-otlp-proto": "0.300.0",
-    "@opentelemetry/exporter-metrics-otlp-proto": "0.300.0",
-    "@opentelemetry/exporter-trace-otlp-proto": "0.300.0",
-    "@opentelemetry/instrumentation-http": "0.300.0",
-    "@opentelemetry/instrumentation-pg": "0.77.0",
-    "@opentelemetry/instrumentation-pino": "0.70.0",
-    "@opentelemetry/instrumentation-runtime-node": "0.37.0",
-    "@opentelemetry/instrumentation-undici": "0.34.0",
-    "@opentelemetry/resources": "3.0.0",
-    "@opentelemetry/sdk-logs": "3.0.0",
-    "@opentelemetry/sdk-metrics": "3.0.0",
-    "@opentelemetry/sdk-node": "0.300.0",
+    "@opentelemetry/core": "3.1.0",
+    "@opentelemetry/exporter-logs-otlp-proto": "0.301.0",
+    "@opentelemetry/exporter-metrics-otlp-proto": "0.301.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "0.301.0",
+    "@opentelemetry/instrumentation-http": "0.301.0",
+    "@opentelemetry/instrumentation-pg": "0.78.0",
+    "@opentelemetry/instrumentation-pino": "0.71.0",
+    "@opentelemetry/instrumentation-runtime-node": "0.38.0",
+    "@opentelemetry/instrumentation-undici": "0.35.0",
+    "@opentelemetry/resources": "3.1.0",
+    "@opentelemetry/sdk-logs": "3.1.0",
+    "@opentelemetry/sdk-metrics": "3.1.0",
+    "@opentelemetry/sdk-node": "0.301.0",
     "@opentelemetry/semantic-conventions": "1.44.0",
     "@sentry/node": "11.11.0",
     "@supabase/supabase-js": "2.119.0",
@@ -60,17 +60,23 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.5",
+    "@eslint/js": "10.0.1",
     "@jest/globals": "30.5.2",
     "@types/node": "24.19.2",
     "@types/pg": "8.23.1",
     "drizzle-kit": "0.31.11",
-    "eslint": "9.39.5",
+    "eslint": "10.14.0",
     "jest": "30.5.2",
     "prettier": "3.9.10",
     "ts-jest": "29.4.15",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
     "typescript-eslint": "8.72.1"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.25.12"
+    },
+    "minimatch@>=7.0.0 <11.0.1": "11.0.5"
   }
 }
